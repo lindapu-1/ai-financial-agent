@@ -1,112 +1,66 @@
 # AI Financial Agent 🤖
-This is a proof of conncept AI financial agent.  The goal of this project is to explore the use of AI for investment research.  This project is for **educational** purposes only and is not intended for real trading or investment.
 
-👋 **Demo**: You can use a live demo of this project [here](https://chat.financialdatasets.ai/).
+这是一个专为投资研究设计的 AI 智能体。它能自动拆解财务分析任务、实时抓取股票数据、分析财报并生成深度研究报告。
 
-<img width="1709" alt="Screenshot 2025-01-06 at 5 53 59 PM" src="https://github.com/user-attachments/assets/7ef1729b-f2e1-477c-99e2-1184c1bfa1cd" />
+---
 
-## Disclaimer
+## 🚀 5 分钟快速上手指南 (Windows/Mac)
 
-This project is for **educational and research purposes only**.
+如果你是第一次接触这个项目，请按照以下步骤操作：
 
-- Not intended for real trading or investment
-- No warranties or guarantees provided
-- Past performance does not indicate future results
-- Creator assumes no liability for financial losses
-- Consult a financial advisor for investment decisions
+### 1. 安装基础环境 (仅需一次)
+你的电脑需要安装以下三个软件：
+- **Node.js**: [点击下载 (推荐 20.x 版本)](https://nodejs.org/)
+- **Docker Desktop**: [点击下载](https://www.docker.com/products/docker-desktop/)（用于运行本地数据库）
+- **Git**: [点击下载](https://git-scm.com/downloads)
 
-By using this software, you agree to use it solely for learning purposes.
-
-## Table of Contents 📖
-- [Features](#features)
-- [Setup](#setup)
-- [Run the Agent](#run-the-agent)
-- [Financial Data API](#financial-data-api)
-- [Deploy Your Own Agent](#deploy-your-own-agent)
-
-## Features
-- [AI Financial Agent](https://chat.financialdatasets.ai)
-  - Productized version of this project
-  - Chat assistant for financial research, stock analysis, and more
-  - Uses generative UI to display stock prices, fundamentals, and more
-- [Financial Datasets API](https://financialdatasets.ai)
-  - Access to real-time and historical stock market data
-  - Data is optimized for AI financial agents
-  - 30+ years of financial data with 100% market coverage
-  - Documentation available [here](https://docs.financialdatasets.ai)
-
-## Setup
+### 2. 下载并安装项目
+打开你的终端（Windows 搜索 `PowerShell` 或 `CMD`），依次运行：
 
 ```bash
-git clone https://github.com/virattt/ai-financial-agent.git
+# 1. 克隆代码
+git clone https://github.com/lindapu-1/ai-financial-agent.git
 cd ai-financial-agent
-```
 
-> If you do not have npm installed, please install it from [here](https://nodejs.org/en/download/).
-
-1. Install pnpm (if not already installed):
-```bash
+# 2. 安装 pnpm (项目包管理器)
 npm install -g pnpm
-```
 
-2. Install dependencies:
-```bash
+# 3. 安装项目依赖
 pnpm install
 ```
 
-3. Set up your environment variables:
+### 3. 配置 API Key
+在项目根目录下，你会看到一个 `.env.example` 文件：
+1. 将它重命名为 `.env`（或者直接复制一份命名为 `.env`）。
+2. 用记事本打开 `.env`，在 `OPENAI_API_KEY=` 后面填入你的 Key。
+
+### 4. 启动项目 (一键运行)
+确保你的 **Docker Desktop** 已经打开并正在运行，然后执行：
+
 ```bash
-# Create .env file for your API keys
-cp .env.example .env
-```
+# 1. 启动本地数据库
+docker run -d --name ai-financial-agent-postgres -p 5433:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=ai_financial_agent postgres:16
 
-Set the API keys in the .env file:
-```
-# Get your OpenAI API key from https://platform.openai.com/
-OPENAI_API_KEY=your-openai-api-key
+# 2. 跑数据库初始化
+pnpm db:migrate
 
-# Get your Financial Datasets API key from https://financialdatasets.ai/
-FINANCIAL_DATASETS_API_KEY=your-financial-datasets-api-key
-
-# Get your LangSmith API key from https://smith.langchain.com/
-LANGCHAIN_API_KEY=your-langsmith-api-key
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_PROJECT=ai-financial-agent
-```
-
-**Important**: You should not commit your `.env` file or it will expose secrets that will allow others to control access to your various OpenAI and authentication provider accounts.
-
-## Run the Agent
-
-After completing the steps above, simply run the following command to start the development server:
-```bash
+# 3. 启动应用
 pnpm dev
 ```
 
-Your app template should now be running on [localhost:3000](http://localhost:3000/).
+**现在打开浏览器访问：[http://localhost:3000](http://localhost:3000) 即可开始聊天！**
 
-## Financial Data API
+---
 
-This template uses the [Financial Datasets API](https://financialdatasets.ai) as the financial data provider.  The Financial Datasets API is specifically designed for AI financial agents and LLMs.
+## 🛠 已包含的稳定性优化 (V1.1)
+- **自动登录**：打开页面即可自动创建临时账户，无需手动注册。
+- **数据库健壮性**：即使本地数据库被重置，系统也能自动识别并补全用户信息，不会报错。
+- **模型自动回退**：默认使用 GPT-4o，避免了部分账号没有 4.1 快照模型的权限问题。
 
-The Financial Datasets API provides real-time and historical stock market data and covers 100% of the US market over the past 30 years.  
+---
 
-Data includes financial statements, stock prices, options data, insider trades, institutional ownership, and much more.  You can learn more about the API via the documentation [here](https://docs.financialdatasets.ai).
-
-**Note**: Data is free for AAPL, GOOGL, MSFT, NVDA, and TSLA.
-
-If you do not want to use the Financial Datasets API, you can easily switch to another data provider by modifying a few lines of code.
-
-## Deploy Your Own Agent
-
-You can deploy your own version of the AI Financial Agent in production via Vercel with one click:
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvirattt%2Fai-financial-agent&env=AUTH_SECRET,OPENAI_API_KEY&envDescription=Learn%20more%20about%20how%20to%20get%20the%20API%20Keys%20for%20the%20application&envLink=https%3A%2F%2Fgithub.com%2Fvercel%2Fai-financial-agent%2Fblob%2Fmain%2F.env.example&demo-title=AI%20Financial%20Agent&demo-description=An%20open-source%20financial%20agent%20chat%20template%20built%20with%20the%20AI%20SDK%20by%20Vercel%20and%20Financial%20Datasets%20API.&demo-url=https%3A%2F%2Fchat.vercel.ai&stores=[{%22type%22:%22postgres%22},{%22type%22:%22blob%22}])
-
-If you want to deploy your own version of the AI Financial Agent in production, you need to link your local instance with your Vercel and GitHub accounts.
-
-1. Install Vercel CLI: `npm i -g vercel`
-2. Link local instance with Vercel and GitHub accounts (creates `.vercel` directory): `vercel link`
-3. Download your environment variables: `vercel env pull`
-
+## 📂 主要功能
+- **任务拆解**：自动将模糊的问题拆分为“搜数、对比、分析”三个子任务。
+- **实时研报**：调用 Financial Datasets API 获取最新的美股财报和价格。
+- **Deep Research**：在 `note.md` 中有详细的深度研究 SOP，可指导模型生成高质量备忘录。
 

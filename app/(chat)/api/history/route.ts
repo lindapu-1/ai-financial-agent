@@ -1,5 +1,6 @@
 import { auth } from '@/app/(auth)/auth';
 import { getChatsByUserId } from '@/lib/db/queries';
+import { ensureDbUserId } from '@/lib/auth/ensure-user';
 
 export async function GET() {
   const session = await auth();
@@ -8,7 +9,11 @@ export async function GET() {
     return Response.json('Unauthorized!', { status: 401 });
   }
 
-  // biome-ignore lint: Forbidden non-null assertion.
-  const chats = await getChatsByUserId({ id: session.user.id! });
+  if (!session.user.email) {
+    return Response.json('Unauthorized!', { status: 401 });
+  }
+
+  const dbUserId = await ensureDbUserId(session.user.email);
+  const chats = await getChatsByUserId({ id: dbUserId });
   return Response.json(chats);
 }

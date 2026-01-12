@@ -5,6 +5,7 @@ import {
   getDocumentsById,
   saveDocument,
 } from '@/lib/db/queries';
+import { ensureDbUserId } from '@/lib/auth/ensure-user';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -19,6 +20,10 @@ export async function GET(request: Request) {
   if (!session || !session.user) {
     return new Response('Unauthorized', { status: 401 });
   }
+  if (!session.user.email) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  const dbUserId = await ensureDbUserId(session.user.email);
 
   const documents = await getDocumentsById({ id });
 
@@ -28,7 +33,7 @@ export async function GET(request: Request) {
     return new Response('Not Found', { status: 404 });
   }
 
-  if (document.userId !== session.user.id) {
+  if (document.userId !== dbUserId) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -48,6 +53,10 @@ export async function POST(request: Request) {
   if (!session) {
     return new Response('Unauthorized', { status: 401 });
   }
+  if (!session.user?.email) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  const dbUserId = await ensureDbUserId(session.user.email);
 
   const {
     content,
@@ -55,13 +64,13 @@ export async function POST(request: Request) {
     kind,
   }: { content: string; title: string; kind: BlockKind } = await request.json();
 
-  if (session.user?.id) {
+  if (dbUserId) {
     const document = await saveDocument({
       id,
       content,
       title,
       kind,
-      userId: session.user.id,
+      userId: dbUserId,
     });
 
     return Response.json(document, { status: 200 });
@@ -84,12 +93,16 @@ export async function PATCH(request: Request) {
   if (!session || !session.user) {
     return new Response('Unauthorized', { status: 401 });
   }
+  if (!session.user.email) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  const dbUserId = await ensureDbUserId(session.user.email);
 
   const documents = await getDocumentsById({ id });
 
   const [document] = documents;
 
-  if (document.userId !== session.user.id) {
+  if (document.userId !== dbUserId) {
     return new Response('Unauthorized', { status: 401 });
   }
 

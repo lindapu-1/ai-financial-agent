@@ -1,5 +1,6 @@
 import { auth } from '@/app/(auth)/auth';
 import { getSuggestionsByDocumentId } from '@/lib/db/queries';
+import { ensureDbUserId } from '@/lib/auth/ensure-user';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,6 +15,10 @@ export async function GET(request: Request) {
   if (!session || !session.user) {
     return new Response('Unauthorized', { status: 401 });
   }
+  if (!session.user.email) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  const dbUserId = await ensureDbUserId(session.user.email);
 
   const suggestions = await getSuggestionsByDocumentId({
     documentId,
@@ -25,7 +30,7 @@ export async function GET(request: Request) {
     return Response.json([], { status: 200 });
   }
 
-  if (suggestion.userId !== session.user.id) {
+  if (suggestion.userId !== dbUserId) {
     return new Response('Unauthorized', { status: 401 });
   }
 

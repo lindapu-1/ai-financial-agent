@@ -6,6 +6,8 @@ import { ChatRequestOptions, CreateMessage, Message } from 'ai';
 import { memo, useState } from 'react';
 import { getLocalOpenAIApiKey } from '@/lib/db/api-keys';
 import { ApiKeysModal } from './api-keys-modal';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/utils';
 
 interface SuggestedActionsProps {
   chatId: string;
@@ -17,6 +19,11 @@ interface SuggestedActionsProps {
 
 function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
   const [showApiKeysModal, setShowApiKeysModal] = useState(false);
+
+  const { data: serverKeyConfig } = useSWR<{
+    hasOpenAIKey: boolean;
+    hasFinancialDatasetsKey: boolean;
+  }>('/api/config/keys', fetcher);
   
   const suggestedActions = [
     {
@@ -68,7 +75,8 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
                 try {
                   //  Check for API key
                   const localApiKey = getLocalOpenAIApiKey();
-                  if (!localApiKey) {
+                  const serverHasOpenAIKey = Boolean(serverKeyConfig?.hasOpenAIKey);
+                  if (!localApiKey && !serverHasOpenAIKey) {
                     setShowApiKeysModal(true);
                     return;
                   }

@@ -35,6 +35,11 @@ export function Chat({
   const openAIApiKey = getLocalOpenAIApiKey();
   const [showApiKeysModal, setShowApiKeysModal] = useState(false);
 
+  const { data: serverKeyConfig } = useSWR<{
+    hasOpenAIKey: boolean;
+    hasFinancialDatasetsKey: boolean;
+  }>('/api/config/keys', fetcher);
+
   const {
     messages,
     setMessages,
@@ -82,7 +87,8 @@ export function Chat({
       // Check if user has reached their free message limit
       const maxFreeMessageCount = 0;
       const localApiKey = getLocalOpenAIApiKey();
-      if (data.count >= maxFreeMessageCount && !localApiKey) {
+      const serverHasOpenAIKey = Boolean(serverKeyConfig?.hasOpenAIKey);
+      if (data.count >= maxFreeMessageCount && !localApiKey && !serverHasOpenAIKey) {
         setShowApiKeysModal(true);
         return;
       }

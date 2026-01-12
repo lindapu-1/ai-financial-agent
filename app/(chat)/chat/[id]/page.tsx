@@ -7,6 +7,7 @@ import { DEFAULT_MODEL_NAME, models } from '@/lib/ai/models';
 import { getChatById, getMessagesByChatId } from '@/lib/db/queries';
 import { convertToUIMessages } from '@/lib/utils';
 import { DataStreamHandler } from '@/components/data-stream-handler';
+import { ensureDbUserId } from '@/lib/auth/ensure-user';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -18,13 +19,16 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   }
 
   const session = await auth();
+  const dbUserId = session?.user?.email
+    ? await ensureDbUserId(session.user.email)
+    : null;
 
   if (chat.visibility === 'private') {
     if (!session || !session.user) {
       return notFound();
     }
 
-    if (session.user.id !== chat.userId) {
+    if (!dbUserId || dbUserId !== chat.userId) {
       return notFound();
     }
   }
@@ -46,7 +50,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         initialMessages={convertToUIMessages(messagesFromDb)}
         selectedModelId={selectedModelId}
         selectedVisibilityType={chat.visibility}
-        isReadonly={session?.user?.id !== chat.userId}
+        isReadonly={dbUserId !== chat.userId}
       />
       <DataStreamHandler id={id} />
     </>

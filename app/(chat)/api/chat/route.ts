@@ -24,6 +24,7 @@ import {
   getMostRecentUserMessage,
   sanitizeResponseMessages,
 } from '@/lib/utils';
+import { ensureDbUserId } from '@/lib/auth/ensure-user';
 
 import { generateTitleFromUserMessage } from '../../actions';
 import { AISDKExporter } from 'langsmith/vercel';
@@ -37,6 +38,17 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const allTools: AllowedTools[] = [...financialTools];
+
+function isPlaceholderKey(value: string | undefined | null) {
+  const v = (value ?? '').trim();
+  if (!v) return true;
+  return (
+    v === '****' ||
+    v === 'changeme' ||
+    v === 'your-openai-api-key' ||
+    v === 'your-financial-datasets-api-key'
+  );
+}
 
 export async function POST(request: Request) {
   const {
@@ -55,9 +67,16 @@ export async function POST(request: Request) {
 
   const session = await auth();
 
-  if (!session || !session.user || !session.user.id) {
+  if (!session || !session.user || !session.user.email) {
     return new Response('Unauthorized', { status: 401 });
   }
+  const dbUserId = await ensureDbUserId(session.user.email);
+
+  // Prefer client-provided keys, but fall back to server env for local dev.
+  const effectiveModelApiKey = (modelApiKey ?? process.env.OPENAI_API_KEY)?.trim();
+  const effectiveFinancialDatasetsApiKey = (
+    financialDatasetsApiKey ?? process.env.FINANCIAL_DATASETS_API_KEY
+  )?.trim();
 
   const model = models.find((model) => model.id === modelId);
 
@@ -65,8 +84,11 @@ export async function POST(request: Request) {
     return new Response('Model not found', { status: 404 });
   }
 
-  if (!modelApiKey) {
-    return new Response('Model API key is required', { status: 400 });
+  if (isPlaceholderKey(effectiveModelApiKey)) {
+    return new Response(
+      'Model API key is required (set OPENAI_API_KEY in .env or provide modelApiKey from the client)',
+      { status: 400 },
+    );
   }
 
   const coreMessages = convertToCoreMessages(messages);
@@ -79,8 +101,11 @@ export async function POST(request: Request) {
   const chat = await getChatById({ id });
 
   if (!chat) {
-    const title = await generateTitleFromUserMessage({ message: userMessage, modelApiKey });
-    await saveChat({ id, userId: session.user.id, title });
+    const title = await generateTitleFromUserMessage({
+      message: userMessage,
+      modelApiKey: effectiveModelApiKey,
+    });
+    await saveChat({ id, userId: dbUserId, title });
   }
 
   const userMessageId = generateUUID();
@@ -93,11 +118,14 @@ export async function POST(request: Request) {
 
   return createDataStreamResponse({
     execute: async (dataStream) => {
-      // Initialize the financial tools manager
-      const financialToolsManager = new FinancialToolsManager({
-        financialDatasetsApiKey: financialDatasetsApiKey!,
-        dataStream,
-      });
+      // Initialize tools only when we have a Financial Datasets API key.
+      const financialToolsManager =
+        !isPlaceholderKey(effectiveFinancialDatasetsApiKey)
+        ? new FinancialToolsManager({
+            financialDatasetsApiKey: effectiveFinancialDatasetsApiKey,
+            dataStream,
+          })
+        : null;
       dataStream.writeData({
         type: 'user-message-id',
         content: userMessageId,
@@ -112,7 +140,9 @@ export async function POST(request: Request) {
       });
 
       const { object } = await generateObject({
-        model: customModel('gpt-4.1-nano-2025-04-14', modelApiKey),
+        // Use the selected model for task planning to avoid "no access" errors
+        // on projects that don't have access to specific model snapshots.
+        model: customModel(model.apiIdentifier, effectiveModelApiKey),
         output: 'array',
         schema: z.object({
           task_name: z.string(),
@@ -174,8 +204,8 @@ export async function POST(request: Request) {
       }
 
       const result = streamText({
-        model: customModel(model.apiIdentifier, modelApiKey),
-        tools: financialToolsManager.getTools(),
+        model: customModel(model.apiIdentifier, effectiveModelApiKey),
+        tools: financialToolsManager ? financialToolsManager.getTools() : {},
         system: systemPrompt,
         messages: coreMessagesWithTaskNames,
         maxSteps: 10,
@@ -199,7 +229,7 @@ export async function POST(request: Request) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
 
           // save the response
-          if (session.user?.id) {
+          if (dbUserId) {
             try {
               const responseMessagesWithoutIncompleteToolCalls = sanitizeResponseMessages(response.messages);
 
