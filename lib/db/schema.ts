@@ -26,12 +26,26 @@ export const chat = pgTable('Chat', {
   userId: uuid('userId')
     .notNull()
     .references(() => user.id),
+  projectId: uuid('projectId').references(() => project.id),
   visibility: varchar('visibility', { enum: ['public', 'private'] })
     .notNull()
     .default('private'),
 });
 
 export type Chat = InferSelectModel<typeof chat>;
+
+export const project = pgTable('Project', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  name: text('name').notNull(),
+  content: text('content').notNull().default(''),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
+export type Project = InferSelectModel<typeof project>;
 
 export const message = pgTable('Message', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),

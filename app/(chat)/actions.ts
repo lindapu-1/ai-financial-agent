@@ -8,8 +8,14 @@ import {
   deleteMessagesByChatIdAfterTimestamp,
   getMessageById,
   updateChatVisiblityById,
+  saveProject as saveProjectQuery,
+  getProjectsByUserId as getProjectsByUserIdQuery,
+  updateProjectContent as updateProjectContentQuery,
+  deleteProjectById as deleteProjectByIdQuery,
 } from '@/lib/db/queries';
 import { VisibilityType } from '@/components/visibility-selector';
+import { auth } from '../(auth)/auth';
+import { revalidatePath } from 'next/cache';
 
 export async function saveModelId(model: string) {
   const cookieStore = await cookies();
@@ -55,4 +61,54 @@ export async function updateChatVisibility({
   visibility: VisibilityType;
 }) {
   await updateChatVisiblityById({ chatId, visibility });
+}
+
+export async function saveProject({
+  id,
+  name,
+}: {
+  id: string;
+  name: string;
+}) {
+  const session = await auth();
+  if (!session || !session.user || !session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
+  await saveProjectQuery({ id, name, userId: session.user.id });
+  revalidatePath('/');
+}
+
+export async function getProjectsByUserId() {
+  const session = await auth();
+  if (!session || !session.user || !session.user.id) {
+    return [];
+  }
+
+  return await getProjectsByUserIdQuery({ userId: session.user.id });
+}
+
+export async function updateProjectContent({
+  id,
+  content,
+}: {
+  id: string;
+  content: string;
+}) {
+  const session = await auth();
+  if (!session || !session.user || !session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
+  await updateProjectContentQuery({ id, content });
+}
+
+export async function deleteProjectById({ id }: { id: string }) {
+  const session = await auth();
+  if (!session || !session.user || !session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
+  await deleteProjectByIdQuery({ id });
+  revalidatePath('/');
 }

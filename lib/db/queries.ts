@@ -9,6 +9,8 @@ import {
   user,
   chat,
   type User,
+  project,
+  type Project,
   document,
   type Suggestion,
   suggestion,
@@ -51,10 +53,12 @@ export async function saveChat({
   id,
   userId,
   title,
+  projectId,
 }: {
   id: string;
   userId: string;
   title: string;
+  projectId?: string;
 }) {
   try {
     return await db.insert(chat).values({
@@ -62,9 +66,87 @@ export async function saveChat({
       createdAt: new Date(),
       userId,
       title,
+      projectId,
     });
   } catch (error) {
     console.error('Failed to save chat in database');
+    throw error;
+  }
+}
+
+export async function saveProject({
+  id,
+  name,
+  userId,
+}: {
+  id: string;
+  name: string;
+  userId: string;
+}) {
+  try {
+    return await db.insert(project).values({
+      id,
+      name,
+      userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Failed to save project in database');
+    throw error;
+  }
+}
+
+export async function getProjectById({ id }: { id: string }) {
+  try {
+    const [selectedProject] = await db
+      .select()
+      .from(project)
+      .where(eq(project.id, id));
+    return selectedProject;
+  } catch (error) {
+    console.error('Failed to get project by id from database');
+    throw error;
+  }
+}
+
+export async function getProjectsByUserId({ userId }: { userId: string }) {
+  try {
+    return await db
+      .select()
+      .from(project)
+      .where(eq(project.userId, userId))
+      .orderBy(desc(project.updatedAt));
+  } catch (error) {
+    console.error('Failed to get projects by user from database');
+    throw error;
+  }
+}
+
+export async function updateProjectContent({
+  id,
+  content,
+}: {
+  id: string;
+  content: string;
+}) {
+  try {
+    return await db
+      .update(project)
+      .set({ content, updatedAt: new Date() })
+      .where(eq(project.id, id));
+  } catch (error) {
+    console.error('Failed to update project content in database');
+    throw error;
+  }
+}
+
+export async function deleteProjectById({ id }: { id: string }) {
+  try {
+    // Optionally delete related chats or keep them
+    return await db.delete(project).where(eq(project.id, id));
+  } catch (error) {
+    console.error('Failed to delete project from database');
     throw error;
   }
 }
