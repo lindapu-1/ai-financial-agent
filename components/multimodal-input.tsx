@@ -47,6 +47,7 @@ function PureMultimodalInput({
   append,
   handleSubmit,
   className,
+  showSuggestedActions = true,
 }: {
   chatId: string;
   input: string;
@@ -68,6 +69,7 @@ function PureMultimodalInput({
     chatRequestOptions?: ChatRequestOptions,
   ) => void;
   className?: string;
+  showSuggestedActions?: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -295,7 +297,8 @@ function PureMultimodalInput({
 
   return (
     <div className="relative w-full flex flex-col gap-4">
-      {messages.length === 0 &&
+      {showSuggestedActions &&
+        messages.length === 0 &&
         attachments.length === 0 &&
         uploadQueue.length === 0 && (
           <SuggestedActions append={append} chatId={chatId} />
@@ -377,6 +380,7 @@ export const MultimodalInput = memo(
   (prevProps, nextProps) => {
     if (prevProps.input !== nextProps.input) return false;
     if (prevProps.isLoading !== nextProps.isLoading) return false;
+    if (prevProps.showSuggestedActions !== nextProps.showSuggestedActions) return false;
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
 
     return true;

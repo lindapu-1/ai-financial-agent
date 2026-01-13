@@ -11,6 +11,8 @@ import {
   type User,
   project,
   type Project,
+  skill,
+  type Skill,
   document,
   type Suggestion,
   suggestion,
@@ -147,6 +149,87 @@ export async function deleteProjectById({ id }: { id: string }) {
     return await db.delete(project).where(eq(project.id, id));
   } catch (error) {
     console.error('Failed to delete project from database');
+    throw error;
+  }
+}
+
+export async function getSkillsByUserId({ userId }: { userId: string }) {
+  try {
+    return await db
+      .select()
+      .from(skill)
+      .where(and(eq(skill.userId, userId)))
+      .orderBy(asc(skill.createdAt));
+  } catch (error) {
+    console.error('Failed to get skills from database');
+    throw error;
+  }
+}
+
+export async function saveSkill({
+  id,
+  name,
+  prompt,
+  userId,
+  isSystem = false,
+}: {
+  id: string;
+  name: string;
+  prompt: string;
+  userId: string;
+  isSystem?: boolean;
+}) {
+  try {
+    return await db.insert(skill).values({
+      id,
+      name,
+      prompt,
+      userId,
+      isSystem,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Failed to save skill in database');
+    throw error;
+  }
+}
+
+export async function updateSkill({
+  id,
+  name,
+  prompt,
+}: {
+  id: string;
+  name: string;
+  prompt: string;
+}) {
+  try {
+    return await db
+      .update(skill)
+      .set({ name, prompt, updatedAt: new Date() })
+      .where(eq(skill.id, id));
+  } catch (error) {
+    console.error('Failed to update skill in database');
+    throw error;
+  }
+}
+
+export async function deleteSkillById({ id }: { id: string }) {
+  try {
+    return await db.delete(skill).where(eq(skill.id, id));
+  } catch (error) {
+    console.error('Failed to delete skill from database');
+    throw error;
+  }
+}
+
+export async function getSkillById({ id }: { id: string }) {
+  try {
+    const [selectedSkill] = await db.select().from(skill).where(eq(skill.id, id));
+    return selectedSkill;
+  } catch (error) {
+    console.error('Failed to get skill by id from database');
     throw error;
   }
 }

@@ -47,6 +47,20 @@ export const project = pgTable('Project', {
 
 export type Project = InferSelectModel<typeof project>;
 
+export const skill = pgTable('Skill', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  name: varchar('name', { length: 256 }).notNull(),
+  prompt: text('prompt').notNull(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id),
+  isSystem: boolean('isSystem').notNull().default(false),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
+export type Skill = InferSelectModel<typeof skill>;
+
 export const message = pgTable('Message', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   chatId: uuid('chatId')

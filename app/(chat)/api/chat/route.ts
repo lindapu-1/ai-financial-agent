@@ -14,10 +14,16 @@ import {
   systemPrompt,
 } from '@/lib/ai/prompts';
 import {
+  CANVAS_SYSTEM_PROMPT,
+  SKILL_PROMPTS,
+} from '@/lib/ai/prompts-canvas';
+import {
   deleteChatById,
   getChatById,
   saveChat,
   saveMessages,
+  getProjectById,
+  getSkillById,
 } from '@/lib/db/queries';
 import {
   generateUUID,
@@ -57,12 +63,18 @@ export async function POST(request: Request) {
     modelId,
     financialDatasetsApiKey,
     modelApiKey,
+    mode = 'chat',
+    projectId,
+    skillId,
   }: {
     id: string;
     messages: Array<Message>;
     modelId: string;
     financialDatasetsApiKey?: string;
     modelApiKey?: string;
+    mode?: 'chat' | 'canvas';
+    projectId?: string;
+    skillId?: string;
   } = await request.json();
 
   const session = await auth();
@@ -78,7 +90,7 @@ export async function POST(request: Request) {
     return new Response('Model not found', { status: 404 });
   }
 
-  // Prefer client-provided keys, but fall back to server env for local dev.
+  // ... (API key logic remains same)
   let effectiveModelApiKey = modelApiKey?.trim();
   if (!effectiveModelApiKey) {
     if (model.provider === 'openai') effectiveModelApiKey = process.env.OPENAI_API_KEY;
@@ -112,7 +124,7 @@ export async function POST(request: Request) {
       modelId: model.apiIdentifier,
       modelApiKey: effectiveModelApiKey,
     });
-    await saveChat({ id, userId: dbUserId, title });
+    await saveChat({ id, userId: dbUserId, title, projectId });
   }
 
   const userMessageId = generateUUID();
@@ -125,6 +137,115 @@ export async function POST(request: Request) {
 
   return createDataStreamResponse({
     execute: async (dataStream) => {
+      dataStream.writeData({
+        type: 'user-message-id',
+        content: userMessageId,
+      });
+
+      // --- CANVAS 模式逻辑 ---
+      if (mode === 'canvas') {
+        let selectedSkillName = '专项分析';
+        let skillPromptContent = '';
+
+        // 1. 获取项目上下文 (先放上下文)
+        let projectContent = '';
+        if (projectId) {
+          const project = await getProjectById({ id: projectId });
+          if (project && project.content) {
+            projectContent = project.content;
+          }
+        }
+
+        // 2. 获取技能 Prompt (后放指令，增强指令遵循)
+        if (skillId) {
+          const skill = await getSkillById({ id: skillId });
+          if (skill) {
+            skillPromptContent = `\n\n【关键指令 - 必须严格执行】\n你当前正在执行 "${skill.name}" 专项技能。请务必遵循以下格式和内容要求进行输出：\n${skill.prompt}`;
+            selectedSkillName = skill.name;
+          }
+        }
+
+        // 3. 组装最终 System Prompt
+        // 将最重要的技能指令放在最后，利用模型的“近因效应”
+        const canvasSystemPrompt = `
+${CANVAS_SYSTEM_PROMPT}
+
+---
+【参考上下文 (Project Context)】:
+${projectContent || '（编辑器目前内容较少，请确保已粘贴足够的项目素材）'}
+---
+
+${skillPromptContent}
+
+【回复准则】:
+- 请直接输出报告内容。
+- 如果用户提出了特定问题，请结合上述上下文和技能要求进行回答。
+- 确保你的语气专业且严谨。
+- **即便上下文很长，也请优先寻找其中的信息。不要回复“请粘贴素材”。**
+`.trim();
+
+        // 发送正在思考的状态
+        dataStream.writeData({
+          type: 'query-loading',
+          content: {
+            isLoading: true,
+            taskNames: [`正在进行${selectedSkillName}`]
+          }
+        });
+
+        let receivedFirstChunk = false;
+
+        const result = streamText({
+          model: customModel(model.apiIdentifier, effectiveModelApiKey),
+          system: canvasSystemPrompt,
+          messages: coreMessages,
+          onChunk: () => {
+            if (!receivedFirstChunk) {
+              receivedFirstChunk = true;
+              // 收到第一块数据时，关闭加载状态
+              dataStream.writeData({
+                type: 'query-loading',
+                content: {
+                  isLoading: false,
+                  taskNames: []
+                }
+              });
+            }
+          },
+          onFinish: async ({ response }) => {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            if (dbUserId) {
+              try {
+                const responseMessages = sanitizeResponseMessages(response.messages);
+                if (responseMessages.length > 0) {
+                  await saveMessages({
+                    messages: responseMessages.map((message) => {
+                      const messageId = generateUUID();
+                      if (message.role === 'assistant') {
+                        dataStream.writeMessageAnnotation({ messageIdFromServer: messageId });
+                      }
+                      return {
+                        id: messageId,
+                        chatId: id,
+                        role: message.role,
+                        content: message.content,
+                        createdAt: new Date(),
+                      };
+                    }),
+                  });
+                }
+              } catch (error) {
+                console.error('Failed to save canvas chat:', error);
+              }
+            }
+          },
+        });
+
+        result.mergeIntoDataStream(dataStream);
+        return;
+      }
+
+      // --- CHAT 模式逻辑 (原有逻辑) ---
       // Initialize tools only when we have a Financial Datasets API key.
       const financialToolsManager =
         !isPlaceholderKey(effectiveFinancialDatasetsApiKey)
@@ -133,10 +254,6 @@ export async function POST(request: Request) {
             dataStream,
           })
         : null;
-      dataStream.writeData({
-        type: 'user-message-id',
-        content: userMessageId,
-      });
 
       dataStream.writeData({
         type: 'query-loading',

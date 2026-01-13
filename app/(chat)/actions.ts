@@ -12,6 +12,10 @@ import {
   getProjectsByUserId as getProjectsByUserIdQuery,
   updateProjectContent as updateProjectContentQuery,
   deleteProjectById as deleteProjectByIdQuery,
+  saveSkill as saveSkillQuery,
+  getSkillsByUserId as getSkillsByUserIdQuery,
+  updateSkill as updateSkillQuery,
+  deleteSkillById as deleteSkillByIdQuery,
 } from '@/lib/db/queries';
 import { VisibilityType } from '@/components/visibility-selector';
 import { auth } from '../(auth)/auth';
@@ -110,5 +114,60 @@ export async function deleteProjectById({ id }: { id: string }) {
   }
 
   await deleteProjectByIdQuery({ id });
+  revalidatePath('/');
+}
+
+export async function getSkillsByUserId() {
+  const session = await auth();
+  if (!session || !session.user || !session.user.id) {
+    return [];
+  }
+
+  return await getSkillsByUserIdQuery({ userId: session.user.id });
+}
+
+export async function saveSkill({
+  id,
+  name,
+  prompt,
+}: {
+  id: string;
+  name: string;
+  prompt: string;
+}) {
+  const session = await auth();
+  if (!session || !session.user || !session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
+  await saveSkillQuery({ id, name, prompt, userId: session.user.id });
+  revalidatePath('/');
+}
+
+export async function updateSkill({
+  id,
+  name,
+  prompt,
+}: {
+  id: string;
+  name: string;
+  prompt: string;
+}) {
+  const session = await auth();
+  if (!session || !session.user || !session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
+  await updateSkillQuery({ id, name, prompt });
+  revalidatePath('/');
+}
+
+export async function deleteSkillById({ id }: { id: string }) {
+  const session = await auth();
+  if (!session || !session.user || !session.user.id) {
+    throw new Error('Unauthorized');
+  }
+
+  await deleteSkillByIdQuery({ id });
   revalidatePath('/');
 }

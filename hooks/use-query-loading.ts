@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 
 interface QueryLoadingState {
@@ -43,12 +43,12 @@ export function useQueryLoading() {
     return loadingState;
   }, [loadingState]);
 
-  const setQueryLoading = (isLoading: boolean, taskNames: string[] = []) => {
+  const setQueryLoading = useCallback((isLoading: boolean, taskNames: string[] = []) => {
     setLoadingState({
       isLoading,
       taskNames
-    });
-  };
+    }, false);
+  }, [setLoadingState]);
 
   return { state, setQueryLoading };
 } 

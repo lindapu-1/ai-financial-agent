@@ -15,6 +15,7 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
+  SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
@@ -28,8 +29,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   const { mode } = useViewMode();
 
   return (
-    <Sidebar className="group-data-[side=left]:border-r-0 bg-sidebar">
-      <SidebarHeader>
+    <Sidebar collapsible="icon" className="group-data-[side=left]:border-r-0 bg-sidebar">
+      <SidebarHeader className="group-data-[collapsible=icon]:hidden">
         <SidebarMenu>
           <div className="flex flex-row justify-between items-center px-2 py-2">
             <span className="font-bold text-sm text-sidebar-foreground truncate">
@@ -58,16 +59,17 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           </div>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="group-data-[collapsible=icon]:hidden">
         {mode === 'chat' ? (
           <SidebarHistory user={user} />
         ) : (
           <ProjectList />
         )}
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="group-data-[collapsible=icon]:hidden">
         {user && <SidebarUserNav user={user} />}
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }

@@ -4,13 +4,15 @@ import { useViewMode } from '@/hooks/use-view-mode';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import Link from 'next/link';
+import { SidebarTrigger } from './ui/sidebar';
 
 export function GlobalHeader() {
   const { mode, setMode } = useViewMode();
 
   return (
     <header className="flex items-center justify-between px-4 h-12 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <SidebarTrigger className="-ml-1 mr-2" />
         <Link
           href="/"
           onClick={(e) => {

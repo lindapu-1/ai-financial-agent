@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 
 type ToolName = 'searchStocksByFilters' | 'getCurrentStockPrice' | 'getStockPrices' | 'getIncomeStatements' | 'getBalanceSheets' | 'getCashFlowStatements' | 'getFinancialMetrics';
@@ -52,12 +52,12 @@ export function useToolLoading() {
     return loadingState;
   }, [loadingState]);
 
-  const setToolLoading = (tool: ToolName, isLoading: boolean, message?: string) => {
+  const setToolLoading = useCallback((tool: ToolName, isLoading: boolean, message?: string) => {
     setLoadingState((currentState) => ({
       ...currentState,
       [tool]: { loading: isLoading, message },
-    }));
-  };
+    }), false);
+  }, [setLoadingState]);
 
   return { state, setToolLoading };
 } 
