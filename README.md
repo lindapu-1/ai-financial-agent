@@ -31,8 +31,24 @@ pnpm install
 
 ### 3. 配置 API Key
 在项目根目录下，你会看到一个 `.env.example` 文件：
-1. 将它重命名为 `.env`（或者直接复制一份命名为 `.env`）。
-2. 用记事本打开 `.env`，在 `OPENAI_API_KEY=` 后面填入你的 Key。
+1. 将它复制一份命名为 `.env.local`（推荐）或 `.env`。
+2. 用记事本打开 `.env.local`，填入你的 API Key：
+
+```bash
+# OpenAI API Key (必须)
+OPENAI_API_KEY=your-openai-api-key
+
+# Google Gemini API Key (可选，用于使用 Gemini 模型)
+GOOGLE_API_KEY=your-google-api-key
+
+# DeepSeek API Key (可选，用于使用 DeepSeek 模型)
+DEEPSEEK_API_KEY=your-deepseek-api-key
+
+# Financial Datasets API Key (可选，用于股票数据功能)
+FINANCIAL_DATASETS_API_KEY=your-financial-datasets-api-key
+```
+
+**注意**：所有 API Key 都可以写在 `.env.local` 文件中，项目会优先读取 `.env.local` 中的配置。
 
 ### 4. 启动项目 (一键运行)
 确保你的 **Docker Desktop** 已经打开并正在运行，然后执行：

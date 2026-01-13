@@ -72,21 +72,27 @@ export async function POST(request: Request) {
   }
   const dbUserId = await ensureDbUserId(session.user.email);
 
-  // Prefer client-provided keys, but fall back to server env for local dev.
-  const effectiveModelApiKey = (modelApiKey ?? process.env.OPENAI_API_KEY)?.trim();
-  const effectiveFinancialDatasetsApiKey = (
-    financialDatasetsApiKey ?? process.env.FINANCIAL_DATASETS_API_KEY
-  )?.trim();
-
   const model = models.find((model) => model.id === modelId);
 
   if (!model) {
     return new Response('Model not found', { status: 404 });
   }
 
+  // Prefer client-provided keys, but fall back to server env for local dev.
+  let effectiveModelApiKey = modelApiKey?.trim();
+  if (!effectiveModelApiKey) {
+    if (model.provider === 'openai') effectiveModelApiKey = process.env.OPENAI_API_KEY;
+    if (model.provider === 'google') effectiveModelApiKey = process.env.GOOGLE_API_KEY;
+    if (model.provider === 'deepseek') effectiveModelApiKey = process.env.DEEPSEEK_API_KEY;
+  }
+  
+  const effectiveFinancialDatasetsApiKey = (
+    financialDatasetsApiKey ?? process.env.FINANCIAL_DATASETS_API_KEY
+  )?.trim();
+
   if (isPlaceholderKey(effectiveModelApiKey)) {
     return new Response(
-      'Model API key is required (set OPENAI_API_KEY in .env or provide modelApiKey from the client)',
+      `Model API key is required (set ${model.provider.toUpperCase()}_API_KEY in .env or provide modelApiKey from the client)`,
       { status: 400 },
     );
   }
@@ -103,6 +109,7 @@ export async function POST(request: Request) {
   if (!chat) {
     const title = await generateTitleFromUserMessage({
       message: userMessage,
+      modelId: model.apiIdentifier,
       modelApiKey: effectiveModelApiKey,
     });
     await saveChat({ id, userId: dbUserId, title });

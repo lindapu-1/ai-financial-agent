@@ -5,32 +5,49 @@ export interface Model {
   label: string;
   apiIdentifier: string;
   description: string;
+  provider: 'openai' | 'google' | 'deepseek';
 }
 
 export const models: Array<Model> = [
-  {
-    id: 'gpt-4.1-nano-2025-04-14',
-    label: 'GPT 4.1 nano',
-    apiIdentifier: 'gpt-4.1-nano-2025-04-14',
-    description: 'Fastest, most cost-effective GPT-4.1 model',
-  },
-  {
-    id: 'gpt-4.1-mini-2025-04-14',
-    label: 'GPT 4.1 mini',
-    apiIdentifier: 'gpt-4.1-mini-2025-04-14',
-    description: 'Balance between intelligence, speed, and cost',
-  },
-  {
-    id: 'gpt-4.1-2025-04-14',
-    label: 'GPT 4.1',
-    apiIdentifier: 'gpt-4.1-2025-04-14',
-    description: 'Flagship model for complex tasks',
-  },
+  // OpenAI Models
   {
     id: 'gpt-4o',
-    label: 'GPT-4o',
+    label: 'GPT-4o (recommend)',
     apiIdentifier: 'gpt-4o',
     description: 'Omni-purpose model for complex tasks',
+    provider: 'openai',
+  },
+  
+  // DeepSeek Models
+  {
+    id: 'deepseek-chat',
+    label: 'DeepSeek V3',
+    apiIdentifier: 'deepseek-chat',
+    description: 'DeepSeek V3 chat model',
+    provider: 'deepseek',
+  },
+  
+  // Google Gemini Models
+  {
+    id: 'gemini-2.5-pro',
+    label: 'Gemini 2.5 Pro',
+    apiIdentifier: 'gemini-2.5-pro',
+    description: 'Latest flagship Gemini 2.5 model',
+    provider: 'google',
+  },
+  {
+    id: 'gemini-3-pro-preview',
+    label: 'Gemini 3 Pro Preview (very slow)',
+    apiIdentifier: 'gemini-3-pro-preview',
+    description: 'Next-generation Gemini 3 model',
+    provider: 'google',
+  },
+  {
+    id: 'gemini-3-flash-preview',
+    label: 'Gemini 3 Flash Preview (very slow)',
+    apiIdentifier: 'gemini-3-flash-preview',
+    description: 'Fast next-generation Gemini 3 model',
+    provider: 'google',
   },
 ] as const;
 

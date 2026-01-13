@@ -18,15 +18,15 @@ export async function saveModelId(model: string) {
 
 export async function generateTitleFromUserMessage({
   message,
+  modelId,
   modelApiKey,
 }: {
   message: CoreUserMessage;
+  modelId: string;
   modelApiKey: string;
 }) {
   const { text: title } = await generateText({
-    // Use a broadly available model to avoid "model_not_found" errors on projects
-    // that don't have access to dated 4.1-* snapshots.
-    model: customModel('gpt-4o', modelApiKey),
+    model: customModel(modelId, modelApiKey),
     system: `\n
     - you will generate a short title based on the first message a user begins a conversation with
     - ensure it is not more than 30 characters long

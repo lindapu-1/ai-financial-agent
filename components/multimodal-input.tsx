@@ -71,6 +71,10 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const { state: queryLoadingState } = useQueryLoading();
+  
+  // 如果 useChat 的 isLoading 或 queryLoadingState 中任何一个为 true，都显示停止按钮
+  const shouldShowStopButton = isLoading || queryLoadingState.isLoading;
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -281,8 +285,8 @@ function PureMultimodalInput({
       }
     } else if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (isLoading) {
-        toast.error('Please wait for the model to finish its response!');
+      if (shouldShowStopButton) {
+        toast.error('请先点击停止按钮停止当前生成，然后再发送新消息');
       } else {
         submitForm();
       }
@@ -350,11 +354,11 @@ function PureMultimodalInput({
       />
 
       <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
-        <AttachmentsButton fileInputRef={fileInputRef} isLoading={isLoading} />
+        <AttachmentsButton fileInputRef={fileInputRef} isLoading={shouldShowStopButton} />
       </div>
 
-      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {isLoading ? (
+      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end z-10">
+        {shouldShowStopButton ? (
           <StopButton stop={stop} setMessages={setMessages} />
         ) : (
           <SendButton
@@ -412,15 +416,19 @@ function PureStopButton({
 }) {
   const { setQueryLoading } = useQueryLoading();
 
+  const handleStop = (event: React.MouseEvent) => {
+    event.preventDefault();
+    stop();
+    setQueryLoading(false, []);
+    setMessages((messages) => sanitizeUIMessages(messages));
+    toast.success('已停止生成，可以发送新消息');
+  };
+
   return (
     <Button
-      className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
-      onClick={(event) => {
-        event.preventDefault();
-        stop();
-        setQueryLoading(false, []);
-        setMessages((messages) => sanitizeUIMessages(messages));
-      }}
+      className="rounded-full p-1.5 h-fit border dark:border-zinc-600 bg-red-500 hover:bg-red-600 text-white dark:bg-red-600 dark:hover:bg-red-700"
+      onClick={handleStop}
+      title="停止生成"
     >
       <StopIcon size={14} />
     </Button>
@@ -446,6 +454,7 @@ function PureSendButton({
         submitForm();
       }}
       disabled={input.length === 0 || uploadQueue.length > 0}
+      title="发送消息"
     >
       <ArrowUpIcon size={14} />
     </Button>
