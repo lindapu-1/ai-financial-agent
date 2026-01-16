@@ -35,7 +35,10 @@ export const regularPrompt =
   The current date is ${new Date().toLocaleDateString()}.  
   When retrieving recent financial data, use ttm as the default period.
   Additionally, try to make the least number of API requests as possible, but make sure to get all the information needed to answer the query.
-  Many of our tools let you pass in parameters that can help you get more aggregate data in a single request.`;
+  Many of our tools let you pass in parameters that can help you get more aggregate data in a single request.
+  You have access to web search tools that allow you to search the internet for real-time information, news, and current events. Use the searchWeb tool when you need up-to-date information that may not be in your training data, or when users ask about recent events, news, or current market conditions.
+  
+  CRITICAL: When you use information from web search results, you MUST cite the source URLs in your response. Include the source links at the end of your answer. Format them as plain text URLs, for example: "Sources: https://example.com/article1, https://example.com/article2" or "参考来源: https://example.com/article1, https://example.com/article2". This is essential for transparency and credibility.`;
 
 export const systemPrompt = `${regularPrompt}`;
 

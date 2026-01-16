@@ -14,6 +14,7 @@ import { SkillManagerModal } from './skill-manager-modal';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/utils';
 import { Skill } from '@/lib/db/schema';
+import type { Message } from 'ai';
 
 interface AiSidebarProps {
   project: Project | null;
@@ -44,6 +45,15 @@ export function AiSidebar({ project }: AiSidebarProps) {
   // Canvas 模式下的对话 ID：直接使用项目 ID (确保是标准 UUID)
   const chatId = project ? project.id : '00000000-0000-0000-0000-000000000000';
 
+  // 加载历史消息（支持记忆功能）
+  const { data: initialMessages } = useSWR<Array<Message>>(
+    project ? `/api/messages?chatId=${chatId}` : null,
+    fetcher,
+    {
+      fallbackData: [],
+    }
+  );
+
   const {
     messages,
     setMessages,
@@ -64,18 +74,26 @@ export function AiSidebar({ project }: AiSidebarProps) {
       projectId: project?.id,
       skillId: activeSkillId,
     },
+    initialMessages: initialMessages || [],
     onFinish: () => {
       mutate('/api/history');
+      mutate(`/api/messages?chatId=${chatId}`);
     },
   });
 
-  // 当切换项目时，清除当前消息
+  // 当initialMessages加载完成后，更新messages（支持记忆）
+  useEffect(() => {
+    if (initialMessages && initialMessages.length > 0 && messages.length === 0) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages, setMessages, messages.length]);
+
+  // 当切换项目时，只清除附件，保留消息（支持记忆）
   useEffect(() => {
     if (project) {
-      setMessages([]); 
       setAttachments([]);
     }
-  }, [project?.id, setMessages]);
+  }, [project?.id]);
 
   return (
     <div className="flex flex-col h-full bg-background border-l relative">

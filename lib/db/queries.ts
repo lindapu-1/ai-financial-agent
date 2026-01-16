@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { genSaltSync, hashSync } from 'bcrypt-ts';
-import { and, asc, desc, eq, gt, gte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
@@ -19,6 +19,10 @@ import {
   type Message,
   message,
   vote,
+  portfolio,
+  type Portfolio,
+  portfolioStock,
+  type PortfolioStock,
 } from './schema';
 import { BlockKind } from '@/components/block';
 
@@ -248,10 +252,18 @@ export async function deleteChatById({ id }: { id: string }) {
 
 export async function getChatsByUserId({ id }: { id: string }) {
   try {
+    // 过滤掉 canvas 模式的 chat（有 projectId 的 chat 是 canvas 模式的）
+    // 只返回普通 chat 模式的记录
     return await db
       .select()
       .from(chat)
-      .where(eq(chat.userId, id))
+      .where(
+        and(
+          eq(chat.userId, id),
+          // 排除 canvas 模式的 chat（projectId 不为 null）
+          isNull(chat.projectId)
+        )
+      )
       .orderBy(desc(chat.createdAt));
   } catch (error) {
     console.error('Failed to get chats by user from database');
@@ -516,6 +528,157 @@ export async function updateChatVisiblityById({
     return await db.update(chat).set({ visibility }).where(eq(chat.id, chatId));
   } catch (error) {
     console.error('Failed to update chat visibility in database');
+    throw error;
+  }
+}
+
+// Portfolio queries
+export async function getPortfoliosByUserId({ userId }: { userId: string }) {
+  try {
+    return await db
+      .select()
+      .from(portfolio)
+      .where(eq(portfolio.userId, userId))
+      .orderBy(desc(portfolio.updatedAt));
+  } catch (error) {
+    console.error('Failed to get portfolios by user from database');
+    throw error;
+  }
+}
+
+export async function getPortfolioById({ id }: { id: string }) {
+  try {
+    const [selectedPortfolio] = await db
+      .select()
+      .from(portfolio)
+      .where(eq(portfolio.id, id));
+    return selectedPortfolio;
+  } catch (error) {
+    console.error('Failed to get portfolio by id from database');
+    throw error;
+  }
+}
+
+export async function createPortfolio({
+  id,
+  name,
+  userId,
+}: {
+  id: string;
+  name: string;
+  userId: string;
+}) {
+  try {
+    return await db.insert(portfolio).values({
+      id,
+      name,
+      userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Failed to create portfolio in database');
+    throw error;
+  }
+}
+
+export async function updatePortfolio({
+  id,
+  name,
+}: {
+  id: string;
+  name?: string;
+}) {
+  try {
+    const updateData: { name?: string; updatedAt: Date } = {
+      updatedAt: new Date(),
+    };
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+    return await db.update(portfolio).set(updateData).where(eq(portfolio.id, id));
+  } catch (error) {
+    console.error('Failed to update portfolio in database');
+    throw error;
+  }
+}
+
+export async function deletePortfolioById({ id }: { id: string }) {
+  try {
+    return await db.delete(portfolio).where(eq(portfolio.id, id));
+  } catch (error) {
+    console.error('Failed to delete portfolio from database');
+    throw error;
+  }
+}
+
+export async function getStocksByPortfolioId({ portfolioId }: { portfolioId: string }) {
+  try {
+    return await db
+      .select()
+      .from(portfolioStock)
+      .where(eq(portfolioStock.portfolioId, portfolioId))
+      .orderBy(asc(portfolioStock.createdAt));
+  } catch (error) {
+    console.error('Failed to get stocks by portfolio id from database');
+    throw error;
+  }
+}
+
+export async function addStockToPortfolio({
+  portfolioId,
+  ticker,
+}: {
+  portfolioId: string;
+  ticker: string;
+}) {
+  try {
+    // Check if stock already exists in portfolio
+    const existing = await db
+      .select()
+      .from(portfolioStock)
+      .where(
+        and(
+          eq(portfolioStock.portfolioId, portfolioId),
+          eq(portfolioStock.ticker, ticker.toUpperCase())
+        )
+      );
+    
+    if (existing.length > 0) {
+      return existing[0]; // Return existing stock
+    }
+
+    const result = await db.insert(portfolioStock).values({
+      portfolioId,
+      ticker: ticker.toUpperCase(),
+      createdAt: new Date(),
+    }).returning();
+    
+    return result[0];
+  } catch (error) {
+    console.error('Failed to add stock to portfolio in database');
+    throw error;
+  }
+}
+
+export async function removeStockFromPortfolio({
+  portfolioId,
+  ticker,
+}: {
+  portfolioId: string;
+  ticker: string;
+}) {
+  try {
+    return await db
+      .delete(portfolioStock)
+      .where(
+        and(
+          eq(portfolioStock.portfolioId, portfolioId),
+          eq(portfolioStock.ticker, ticker.toUpperCase())
+        )
+      );
+  } catch (error) {
+    console.error('Failed to remove stock from portfolio in database');
     throw error;
   }
 }

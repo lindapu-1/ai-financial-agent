@@ -39,6 +39,9 @@ import {
   financialTools, 
   type AllowedTools 
 } from '@/lib/ai/tools/financial-tools';
+import {
+  WebSearchToolsManager,
+} from '@/lib/ai/tools/web-search-tools';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -57,27 +60,28 @@ function isPlaceholderKey(value: string | undefined | null) {
 }
 
 export async function POST(request: Request) {
-  const {
-    id,
-    messages,
-    modelId,
-    financialDatasetsApiKey,
-    modelApiKey,
-    mode = 'chat',
-    projectId,
-    skillId,
-  }: {
-    id: string;
-    messages: Array<Message>;
-    modelId: string;
-    financialDatasetsApiKey?: string;
-    modelApiKey?: string;
-    mode?: 'chat' | 'canvas';
-    projectId?: string;
-    skillId?: string;
-  } = await request.json();
+  try {
+    const {
+      id,
+      messages,
+      modelId,
+      financialDatasetsApiKey,
+      modelApiKey,
+      mode = 'chat',
+      projectId,
+      skillId,
+    }: {
+      id: string;
+      messages: Array<Message>;
+      modelId: string;
+      financialDatasetsApiKey?: string;
+      modelApiKey?: string;
+      mode?: 'chat' | 'canvas';
+      projectId?: string;
+      skillId?: string;
+    } = await request.json();
 
-  const session = await auth();
+    const session = await auth();
 
   if (!session || !session.user || !session.user.email) {
     return new Response('Unauthorized', { status: 401 });
@@ -144,26 +148,37 @@ export async function POST(request: Request) {
 
       // --- CANVAS 模式逻辑 ---
       if (mode === 'canvas') {
-        let selectedSkillName = '专项分析';
-        let skillPromptContent = '';
+        try {
+          let selectedSkillName = '专项分析';
+          let skillPromptContent = '';
 
-        // 1. 获取项目上下文 (先放上下文)
-        let projectContent = '';
-        if (projectId) {
-          const project = await getProjectById({ id: projectId });
-          if (project && project.content) {
-            projectContent = project.content;
+          // 1. 获取项目上下文 (先放上下文)
+          let projectContent = '';
+          if (projectId) {
+            try {
+              const project = await getProjectById({ id: projectId });
+              if (project && project.content) {
+                projectContent = project.content;
+              }
+            } catch (error) {
+              console.error('Failed to get project:', error);
+              // 继续执行，即使获取项目失败
+            }
           }
-        }
 
-        // 2. 获取技能 Prompt (后放指令，增强指令遵循)
-        if (skillId) {
-          const skill = await getSkillById({ id: skillId });
-          if (skill) {
-            skillPromptContent = `\n\n【关键指令 - 必须严格执行】\n你当前正在执行 "${skill.name}" 专项技能。请务必遵循以下格式和内容要求进行输出：\n${skill.prompt}`;
-            selectedSkillName = skill.name;
+          // 2. 获取技能 Prompt (后放指令，增强指令遵循)
+          if (skillId) {
+            try {
+              const skill = await getSkillById({ id: skillId });
+              if (skill) {
+                skillPromptContent = `\n\n【关键指令 - 必须严格执行】\n你当前正在执行 "${skill.name}" 专项技能。请务必遵循以下格式和内容要求进行输出：\n${skill.prompt}`;
+                selectedSkillName = skill.name;
+              }
+            } catch (error) {
+              console.error('Failed to get skill:', error);
+              // 继续执行，即使获取技能失败
+            }
           }
-        }
 
         // 3. 组装最终 System Prompt
         // 将最重要的技能指令放在最后，利用模型的“近因效应”
@@ -241,8 +256,22 @@ ${skillPromptContent}
           },
         });
 
-        result.mergeIntoDataStream(dataStream);
-        return;
+          result.mergeIntoDataStream(dataStream);
+          return;
+        } catch (error) {
+          console.error('Canvas mode error:', error);
+          console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+          try {
+            dataStream.writeData({
+              type: 'error',
+              content: `处理请求时出错: ${error instanceof Error ? error.message : '未知错误'}`,
+            });
+          } catch (streamError) {
+            console.error('Failed to write error to stream:', streamError);
+          }
+          // 不抛出错误，让流正常结束
+          return;
+        }
       }
 
       // --- CHAT 模式逻辑 (原有逻辑) ---
@@ -251,6 +280,15 @@ ${skillPromptContent}
         !isPlaceholderKey(effectiveFinancialDatasetsApiKey)
         ? new FinancialToolsManager({
             financialDatasetsApiKey: effectiveFinancialDatasetsApiKey,
+            dataStream,
+          })
+        : null;
+
+      // Initialize web search tools when we have a Tavily API key.
+      const tavilyApiKey = process.env.TAVILY_API_KEY?.trim();
+      const webSearchToolsManager = tavilyApiKey && !isPlaceholderKey(tavilyApiKey)
+        ? new WebSearchToolsManager({
+            tavilyApiKey,
             dataStream,
           })
         : null;
@@ -327,9 +365,15 @@ ${skillPromptContent}
         };
       }
 
+      // Merge all available tools
+      const allTools = {
+        ...(financialToolsManager ? financialToolsManager.getTools() : {}),
+        ...(webSearchToolsManager ? webSearchToolsManager.getTools() : {}),
+      };
+
       const result = streamText({
         model: customModel(model.apiIdentifier, effectiveModelApiKey),
-        tools: financialToolsManager ? financialToolsManager.getTools() : {},
+        tools: allTools,
         system: systemPrompt,
         messages: coreMessagesWithTaskNames,
         maxSteps: 10,
@@ -392,6 +436,23 @@ ${skillPromptContent}
       result.mergeIntoDataStream(dataStream);
     },
   });
+  } catch (error) {
+    console.error('POST /api/chat error:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+    });
+    return new Response(
+      JSON.stringify({
+        error: 'Internal Server Error',
+        message: error instanceof Error ? error.message : '未知错误',
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
 }
 
 export async function DELETE(request: Request) {

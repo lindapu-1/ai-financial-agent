@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 import { auth } from '@/app/(auth)/auth';
 import { Chat } from '@/components/chat';
@@ -16,7 +16,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const chat = await getChatById({ id });
 
   if (!chat) {
-    notFound();
+    // 如果聊天不存在，重定向到首页而不是显示404
+    redirect('/');
   }
 
   const session = await auth();

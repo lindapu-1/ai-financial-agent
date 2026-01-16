@@ -1,11 +1,13 @@
 'use client';
 
 import { Project } from '@/lib/db/schema';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDebounceCallback } from 'usehooks-ts';
 import { updateProjectContent } from '@/app/(chat)/actions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { PaperclipIcon } from '@/components/icons';
 
 interface EditorProps {
   project: Project | null;
@@ -15,6 +17,7 @@ export function Editor({ project }: EditorProps) {
   const [content, setContent] = useState(project?.content || '');
   const [isSaving, setIsSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 建议的上限（对应 GPT-4o / DeepSeek 的 128k token，大约 40-50 万字符）
   const MAX_RECOMMENDED_CHARS = 400000;
@@ -56,6 +59,103 @@ export function Editor({ project }: EditorProps) {
     debouncedSave(newContent);
   };
 
+  const handleFileUpload = useCallback(async (file: File) => {
+    const fileName = file.name.toLowerCase();
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    
+    // 支持PDF和Word文档 - 使用前端库解析
+    if (fileName.endsWith('.pdf') || fileName.endsWith('.docx')) {
+      try {
+        toast.loading(`正在解析文件: ${file.name}...`, { id: 'file-upload' });
+        
+        let extractedText = '';
+        
+        // 解析PDF文件 - 使用pdf.js
+        if (fileName.endsWith('.pdf')) {
+          // 动态加载pdf.js
+          const pdfjsLib = await import('pdfjs-dist');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+          
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map((item: any) => item.str).join(' ');
+            fullText += pageText + '\n\n';
+          }
+          extractedText = fullText;
+        }
+        // 解析Word文档 - 使用mammoth.js
+        else if (fileName.endsWith('.docx')) {
+          // 动态加载mammoth
+          const mammoth = await import('mammoth');
+          const arrayBuffer = await file.arrayBuffer();
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          extractedText = result.value;
+          
+          if (result.messages.length > 0) {
+            console.warn('Word document parsing warnings:', result.messages);
+          }
+        }
+        
+        if (!extractedText || extractedText.trim().length === 0) {
+          throw new Error('文件内容为空或无法提取文本');
+        }
+        
+        const newContent = content ? `${content}\n\n${extractedText}` : extractedText;
+        setContent(newContent);
+        
+        // 使用setTimeout确保DOM更新后再调整高度
+        setTimeout(() => {
+          adjustHeight();
+        }, 0);
+        
+        debouncedSave(newContent);
+        toast.success(`已加载文件: ${file.name}`, { id: 'file-upload' });
+      } catch (error) {
+        console.error('File upload error:', error);
+        toast.error(
+          error instanceof Error ? error.message : '读取文件失败',
+          { id: 'file-upload' }
+        );
+      }
+    }
+    // 支持文本文件（.txt, .md, .json等）
+    else if (['.txt', '.md', '.json', '.csv', '.log'].includes(fileExtension)) {
+      try {
+        const text = await file.text();
+        const newContent = content ? `${content}\n\n${text}` : text;
+        setContent(newContent);
+        // 使用setTimeout确保DOM更新后再调整高度
+        setTimeout(() => {
+          adjustHeight();
+        }, 0);
+        debouncedSave(newContent);
+        toast.success(`已加载文件: ${file.name}`);
+      } catch (error) {
+        console.error('File upload error:', error);
+        toast.error('读取文件失败');
+      }
+    } else {
+      toast.error('仅支持PDF、Word文档（.pdf, .docx）和文本文件（.txt, .md, .json, .csv, .log）');
+    }
+  }, [content, debouncedSave]);
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files || []);
+      files.forEach(handleFileUpload);
+      // 重置input，允许重复选择同一文件
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    },
+    [handleFileUpload]
+  );
+
   if (!project) return null;
 
   const charCount = content.length;
@@ -82,11 +182,30 @@ export function Editor({ project }: EditorProps) {
               )}
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf,.docx,.txt,.md,.json,.csv,.log"
+              className="hidden"
+              multiple
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs"
+            >
+              <PaperclipIcon size={14} className="mr-2" />
+              上传文件
+            </Button>
+          </div>
         </div>
         <textarea
           ref={textareaRef}
           className="w-full min-h-[700px] bg-transparent outline-none resize-none text-lg leading-relaxed mt-8 pb-32 text-foreground/90 placeholder:text-muted-foreground/30 selection:bg-primary/20 transition-all duration-200"
-          placeholder="在此处粘贴项目背景、行业报告、上下文等信息... AI 将基于此处内容进行回答。"
+          placeholder="在此处粘贴项目背景、行业报告、上下文等信息... 或点击右上角上传文件。AI 将基于此处内容进行回答。"
           value={content}
           onChange={handleChange}
           style={{ overflow: 'hidden' }}

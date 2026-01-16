@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export type ViewMode = 'chat' | 'canvas';
+export type ViewMode = 'chat' | 'canvas' | 'portfolio';
 
 interface ViewModeContextType {
   mode: ViewMode;

@@ -50,6 +50,13 @@
       "when": 1768319705958,
       "tag": "0006_youthful_ezekiel",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1768373385988,
+      "tag": "0007_wonderful_mad_thinker",
+      "breakpoints": true
     }
   ]
 }

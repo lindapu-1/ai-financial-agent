@@ -9,7 +9,7 @@
 
 ### 2.1 全局顶层导航 (Global Top Bar)
 *   **固定位置**：页面最顶端，跨越整个屏幕宽度。
-*   **标识**：左侧显示 "Hony Capital" 品牌标识（点击跳转至 [honycapital.com](https://www.honycapital.com/)）。
+*   **标识**：左侧显示 "FinGPT" 品牌标识。
 *   **Tab 切换器**：居中显示 `Chat` | `Canvas` 切换按钮。
 *   **持久性**：切换 Tab 时，此 Top Bar 保持不变。
 
