@@ -15,14 +15,10 @@ export function GlobalHeader() {
         <SidebarTrigger className="-ml-1 mr-2" />
         <Link
           href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            window.location.href = 'https://www.honycapital.com/';
-          }}
           className="flex items-center"
         >
           <span className="text-lg font-bold text-primary tracking-tight">
-            Hony Capital
+            FinGPT
           </span>
         </Link>
       </div>
@@ -49,6 +45,17 @@ export function GlobalHeader() {
           onClick={() => setMode('canvas')}
         >
           Canvas
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn(
+            "px-6 h-7 rounded-md transition-all text-xs",
+            mode === 'portfolio' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+          )}
+          onClick={() => setMode('portfolio')}
+        >
+          Portfolio
         </Button>
       </div>
 

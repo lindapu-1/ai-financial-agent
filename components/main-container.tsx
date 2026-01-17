@@ -3,6 +3,7 @@
 import { useViewMode } from '@/hooks/use-view-mode';
 import { Chat } from './chat';
 import { CanvasView } from './canvas/canvas-view';
+import { PortfolioView } from './portfolio/portfolio-view';
 import { Message } from 'ai';
 
 interface MainContainerProps {
@@ -30,6 +31,11 @@ export function MainContainer({ id, selectedModelId, initialMessages = [] }: Mai
       {/* Canvas Mode */}
       <div className={`absolute inset-0 transition-opacity duration-300 ${mode === 'canvas' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
         <CanvasView />
+      </div>
+
+      {/* Portfolio Mode */}
+      <div className={`absolute inset-0 transition-opacity duration-300 ${mode === 'portfolio' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+        <PortfolioView />
       </div>
     </div>
   );

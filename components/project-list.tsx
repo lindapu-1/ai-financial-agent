@@ -138,7 +138,7 @@ export function ProjectList() {
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 className="col-span-3"
-                placeholder="e.g. Hony Capital Tech Fund"
+                placeholder="e.g. FinGPT Tech Fund"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleCreateProject();
                 }}

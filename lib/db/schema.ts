@@ -141,3 +141,26 @@ export const suggestion = pgTable(
 );
 
 export type Suggestion = InferSelectModel<typeof suggestion>;
+
+export const portfolio = pgTable('Portfolio', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  name: text('name').notNull(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
+export type Portfolio = InferSelectModel<typeof portfolio>;
+
+export const portfolioStock = pgTable('PortfolioStock', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  portfolioId: uuid('portfolioId')
+    .notNull()
+    .references(() => portfolio.id, { onDelete: 'cascade' }),
+  ticker: varchar('ticker', { length: 16 }).notNull(),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+});
+
+export type PortfolioStock = InferSelectModel<typeof portfolioStock>;

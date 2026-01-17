@@ -7,6 +7,7 @@ import { PlusIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { ProjectList } from '@/components/project-list';
+import { PortfolioStockList } from '@/components/portfolio-stock-list';
 import { useViewMode } from '@/hooks/use-view-mode';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,7 +35,11 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         <SidebarMenu>
           <div className="flex flex-row justify-between items-center px-2 py-2">
             <span className="font-bold text-sm text-sidebar-foreground truncate">
-              {mode === 'chat' ? 'Chat History' : 'Project Workspace'}
+              {mode === 'chat'
+                ? 'Chat History'
+                : mode === 'canvas'
+                  ? 'Project Workspace'
+                  : 'Portfolio Company'}
             </span>
             {mode === 'chat' && (
               <Tooltip>
@@ -62,8 +67,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       <SidebarContent className="group-data-[collapsible=icon]:hidden">
         {mode === 'chat' ? (
           <SidebarHistory user={user} />
-        ) : (
+        ) : mode === 'canvas' ? (
           <ProjectList />
+        ) : (
+          <PortfolioStockList />
         )}
       </SidebarContent>
       <SidebarFooter className="group-data-[collapsible=icon]:hidden">

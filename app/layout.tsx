@@ -10,8 +10,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://chat.vercel.ai'),
-  title: 'Hony Capital | Chat',
-  description: 'AI Research Agent for Hony Capital',
+  title: 'FinGPT | Chat',
+  description: 'AI Research Agent for FinGPT',
 };
 
 export const viewport = {
