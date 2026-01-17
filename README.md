@@ -12,7 +12,7 @@
 你的电脑需要安装以下三个软件：
 - **Node.js**: [点击下载 (推荐 20.x 版本)](https://nodejs.org/)
 - **Docker Desktop**: [点击下载](https://www.docker.com/products/docker-desktop/)（**必须启动**，用于运行本地数据库）
-- **Git**: [点击下载](https://git-scm.get-scm.com/downloads)
+- **Git**: [点击下载](https://git-scm.com/downloads)
 
 ### 2. 下载并安装项目
 打开你的终端（Windows 搜索 `PowerShell`；Mac 搜索 `终端`），依次运行：
@@ -46,6 +46,9 @@ DEEPSEEK_API_KEY=sk-xxxx...
 
 # Financial Datasets API Key (可选，用于 Chat 模式下自动抓取股票财报数据)
 FINANCIAL_DATASETS_API_KEY=your-key...
+
+# Tavily API Key (可选，用于联网搜索)
+TAVILY_API_KEY=tvly-xxxx...
 ```
 
 ### 4. 启动项目 (一键运行)
@@ -71,6 +74,7 @@ pnpm dev
 ### 1. Chat 模式 (智能投研助理)
 - **任务拆解**：自动将模糊的问题拆分为"搜数、对比、分析"等子任务。
 - **实时数据**：结合 Financial Datasets，实时获取最新估值、利润表、资产负债表。
+- **联网搜索**：集成 Tavily API，支持获取最新的市场新闻和动态。
 
 ### 2. Canvas 模式 (报告创作工作台)
 - **项目素材库**：左侧管理项目，中间编辑器支持粘贴或上传超长投研素材。
@@ -79,16 +83,48 @@ pnpm dev
 
 ### 3. Portfolio 模式 (持仓管理) - **NEW** 🚀
 - **持仓跟踪**：支持股票跟踪与管理界面。
-- **动态监控**：实时更新股票新闻与价格变动（持续完善中）。
+- **动态监控**：实时更新股票新闻与价格变动。
 
 ---
 
-## 📝 最近更新 (Update Log)
+## 📝 更新日志 (Update Log)
 
-- **Portfolio 界面**：新增持仓管理功能，支持股票跟踪和管理。
-- **投资研报撰写 SOP**：优化了投资研报撰写的标准流程，支持完整的市场研究、公司研究、财务分析和风险评估。
-- **Canvas 历史记忆**：支持多轮对话记忆，切换项目时保留历史对话记录。
-- **文件解析增强**：支持解析 PDF 和 Word 文档内容并提取文本。
+### pu (User)
+- **Canvas 投研画布**：实现三栏式可拖拽布局，支持项目制管理。
+- **Skill 技能管理**：支持用户自定义技能 Prompt 模板，并实现自动初始化。
+- **编辑器优化**：支持数万字长文本的流畅粘贴与实时字数统计。
+- **UI 架构重构**：统一 Global Header，实现侧边栏跟随模式动态切换。
+
+### duan (Friend)
+- **Portfolio 持仓管理**：新增投资组合管理界面，支持股票跟踪。
+- **投资研报 SOP**：引入标准研报撰写流程，覆盖市场、公司、财务等多维度分析。
+- **Web Search 集成**：通过 Tavily API 为 AI 赋予实时联网搜索能力。
+- **文件解析增强**：支持上传 PDF 和 Word (.docx) 文档，自动提取文本至编辑器。
+
+---
+
+## 🐛 待修复问题 (Bug List)
+
+### 高优先级
+1. **文件上传功能增强**
+   - [ ] 支持上传 PDF、Word、PPT 文件
+   - [ ] 当前仅支持 PDF 和 Word (.docx)，需要添加 PPT (.pptx) 支持
+   - [ ] 优化大文件处理性能
+
+2. **Portfolio 功能完善**
+   - [ ] Portfolio 界面可以增加 stocks（添加股票功能）
+   - [ ] 实时更新 stocks news（股票新闻实时更新）
+   - [ ] 添加股票价格实时监控
+
+3. **数据库隔离**
+   - [ ] Canvas 数据不显示在 Chat 数据库中
+   - [ ] 实现 Canvas 和 Chat 的完全数据隔离
+   - [ ] 优化数据查询性能
+
+### 中优先级
+- [ ] 优化 Canvas 界面的文件上传体验
+- [ ] 添加更多文档格式支持（Excel, CSV 等）
+- [ ] 改进错误处理和用户提示
 
 ---
 
