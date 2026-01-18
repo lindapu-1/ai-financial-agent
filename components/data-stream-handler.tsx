@@ -16,32 +16,49 @@ export function DataStreamHandler({ id }: { id: string }) {
   const { setToolLoading } = useToolLoading();
   const { setQueryLoading } = useQueryLoading();
   const lastProcessedIndex = useRef(-1);
+  const processingRef = useRef(false);
+  
+  // 使用 ref 来稳定函数引用，避免 useEffect 依赖项变化
+  const setUserMessageIdFromServerRef = useRef(setUserMessageIdFromServer);
+  const setBlockRef = useRef(setBlock);
+  const setToolLoadingRef = useRef(setToolLoading);
+  const setQueryLoadingRef = useRef(setQueryLoading);
+  
+  // 更新 refs
+  setUserMessageIdFromServerRef.current = setUserMessageIdFromServer;
+  setBlockRef.current = setBlock;
+  setToolLoadingRef.current = setToolLoading;
+  setQueryLoadingRef.current = setQueryLoading;
 
   useEffect(() => {
-    if (!dataStream?.length) return;
+    if (!dataStream?.length || processingRef.current) return;
 
     const newDeltas = dataStream.slice(lastProcessedIndex.current + 1);
+    if (newDeltas.length === 0) return;
+
+    processingRef.current = true;
     lastProcessedIndex.current = dataStream.length - 1;
 
     (newDeltas as DataStreamDelta[]).forEach((delta: DataStreamDelta) => {
       if (delta.type === 'user-message-id') {
-        setUserMessageIdFromServer(delta.content as string);
+        setUserMessageIdFromServerRef.current(delta.content as string);
         return;
       }
 
       if (delta.type === 'tool-loading') {
         const { tool, isLoading, message } = delta.content as ToolLoadingContent;
-        setToolLoading(tool as any, isLoading, message);
+        setToolLoadingRef.current(tool as any, isLoading, message);
         return;
       }
 
       if (delta.type === 'query-loading') {
-        const { isLoading, taskNames, message } = delta.content as QueryLoadingContent;
-        setQueryLoading(isLoading, taskNames);
+        const { isLoading, taskNames } = delta.content as QueryLoadingContent;
+        // setQueryLoading 内部已经有状态比较，不会重复更新
+        setQueryLoadingRef.current(isLoading, taskNames || []);
         return;
       }
 
-      setBlock((draftBlock) => {
+      setBlockRef.current((draftBlock) => {
         if (!draftBlock) {
           return { ...initialBlockData, status: 'streaming' };
         }
@@ -112,7 +129,12 @@ export function DataStreamHandler({ id }: { id: string }) {
         }
       });
     });
-  }, [dataStream, setBlock, setUserMessageIdFromServer, setToolLoading, setQueryLoading]);
+
+    // 使用 setTimeout 确保在处理完所有 deltas 后再重置处理锁
+    setTimeout(() => {
+      processingRef.current = false;
+    }, 0);
+  }, [dataStream]); // 只依赖 dataStream，其他函数通过 ref 访问
 
   return null;
 }

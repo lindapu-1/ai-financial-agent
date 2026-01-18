@@ -1,7 +1,7 @@
 import { ChatRequestOptions, Message } from 'ai';
 import { LoadingMessage, PreviewMessage, ThinkingMessage } from './message';
 import { useScrollToBottom } from './use-scroll-to-bottom';
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { Vote } from '@/lib/db/schema';
 import equal from 'fast-deep-equal';
 import { useQueryLoadingSelector } from '@/hooks/use-query-loading';
@@ -39,8 +39,20 @@ function PureMessages({
     ? queryLoadingState.taskNames
     : [];
 
+  // 当消息更新时，确保滚动到底部（修复 Canvas chat 自动滚动问题）
+  useEffect(() => {
+    if (messages.length > 0 && messagesEndRef.current) {
+      // 使用 setTimeout 确保 DOM 更新完成后再滚动
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length, isLoading, messagesEndRef]);
+
   return (
     <div
+      ref={messagesContainerRef}
       className="flex flex-col min-w-0 min-h-0 gap-4 flex-1 overflow-y-auto overscroll-contain mt-6"
     >
       {messages.map((message, index) => (

@@ -66,7 +66,8 @@ export function CanvasView() {
         {/* 中间：编辑器 */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <div className="h-full flex flex-col min-w-0 min-h-0 border-r">
-            <Editor project={activeProject} />
+            {/* 使用 key 强制重新渲染，确保切换 project 时立即更新（修复问题2） */}
+            <Editor key={activeProject.id} project={activeProject} />
           </div>
         </ResizablePanel>
 

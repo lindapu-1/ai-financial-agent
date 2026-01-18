@@ -40,3 +40,5 @@ yarn-error.log*
 # ignore IDEA
 .idea/
 tests/
+
+测试案例/

@@ -1,222 +1,394 @@
-'use client';
-
 import { Project } from '@/lib/db/schema';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDebounceCallback } from 'usehooks-ts';
 import { updateProjectContent } from '@/app/(chat)/actions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { PaperclipIcon } from '@/components/icons';
+import { 
+  PaperclipIcon, 
+  FileTextIcon, 
+  Loader2Icon, 
+  XIcon, 
+  FileIcon,
+  Trash2Icon
+} from 'lucide-react';
 
 interface EditorProps {
   project: Project | null;
 }
 
+/**
+ * 文件卡片组件 - 真正的 UI 渲染
+ */
+function VisualFileCard({ 
+  name, 
+  onRemove 
+}: { 
+  name: string; 
+  onRemove: () => void 
+}) {
+  const extension = name.split('.').pop()?.toLowerCase();
+  
+  return (
+    <div className="flex items-center justify-between w-full max-w-2xl bg-muted/30 border border-border/50 rounded-xl p-3 my-1 group hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-background border border-border shadow-inner group-hover:scale-110 transition-transform">
+          {extension === 'pdf' ? (
+            <FileTextIcon className="text-red-500" size={20} />
+          ) : extension === 'docx' ? (
+            <FileTextIcon className="text-blue-500" size={20} />
+          ) : (
+            <FileIcon className="text-muted-foreground" size={20} />
+          )}
+        </div>
+        <div className="flex flex-col overflow-hidden">
+          <span className="font-medium text-foreground truncate max-w-[400px] text-sm">
+            {name}
+          </span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
+            {extension || 'unknown'} document
+          </span>
+        </div>
+      </div>
+      
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="opacity-0 group-hover:opacity-100 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+      >
+        <Trash2Icon size={16} />
+      </Button>
+    </div>
+  );
+}
+
 export function Editor({ project }: EditorProps) {
   const [content, setContent] = useState(project?.content || '');
   const [isSaving, setIsSaving] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevProjectIdRef = useRef<string | null>(null);
 
-  // 建议的上限（对应 GPT-4o / DeepSeek 的 128k token，大约 40-50 万字符）
-  const MAX_RECOMMENDED_CHARS = 400000;
+  const HIDDEN_DATA_SEPARATOR = '\n\n--- DO NOT EDIT BELOW THIS LINE ---\n';
 
-  // 自动调整 textarea 高度
-  const adjustHeight = () => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  };
-
-  // 当 project 切换或内容改变时，重置内容并调整高度
+  // 当 project 切换时，立即更新 content（修复问题2）
   useEffect(() => {
-    setContent(project?.content || '');
-    // 需要在 DOM 更新后调整高度
-    setTimeout(adjustHeight, 0);
+    if (project?.id !== prevProjectIdRef.current) {
+      prevProjectIdRef.current = project?.id || null;
+      // 立即更新 content，避免显示上一个 project 的内容
+      setContent(project?.content || '');
+    }
   }, [project?.id, project?.content]);
+
+  // 解析内容为块
+  const blocks = useMemo(() => {
+    const displayPart = content.split(HIDDEN_DATA_SEPARATOR)[0];
+    const parts = displayPart.split(/(\[FILE:[^\]]+\])/g);
+    
+    const parsedBlocks = parts.map((part, index) => {
+      const fileMatch = part.match(/\[FILE:(.+)\]/);
+      if (fileMatch) {
+        // 使用文件名作为稳定的 ID，而不是 index
+        return { id: `file-${fileMatch[1]}`, type: 'file' as const, fileName: fileMatch[1], raw: part };
+      }
+      return { id: `text-${index}`, type: 'text' as const, content: part, raw: part };
+    });
+    
+    // 不过滤空白块，保留所有块以便正确渲染
+    return parsedBlocks;
+  }, [content]);
+  
+  // 获取文件下方输入框的内容（最后一个文件标记后的文本）
+  const getTextAfterLastFile = useMemo(() => {
+    const displayPart = content.split(HIDDEN_DATA_SEPARATOR)[0];
+    const parts = displayPart.split(/(\[FILE:[^\]]+\])/g);
+    
+    // 找到最后一个文件标记的索引
+    let lastFileIndex = -1;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (parts[i].match(/\[FILE:[^\]]+\]/)) {
+        lastFileIndex = i;
+        break;
+      }
+    }
+    
+    // 如果找到文件标记，返回它后面的所有文本
+    if (lastFileIndex >= 0 && lastFileIndex < parts.length - 1) {
+      return parts.slice(lastFileIndex + 1).join('');
+    }
+    
+    return '';
+  }, [content]);
 
   // 防抖保存
   const debouncedSave = useDebounceCallback(async (newContent: string) => {
     if (!project) return;
-    
     setIsSaving(true);
     try {
       await updateProjectContent({ id: project.id, content: newContent });
     } catch (error) {
-      toast.error('保存失败，内容可能过大');
+      toast.error('保存失败');
     } finally {
       setIsSaving(false);
     }
   }, 1000);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
-    setContent(newContent);
-    adjustHeight();
-    debouncedSave(newContent);
+  // 删除文件卡片
+  const removeFile = (fileName: string) => {
+    const [visiblePart, hiddenPart] = content.split(HIDDEN_DATA_SEPARATOR);
+    
+    // 使用正则表达式匹配文件标记，包括前后的换行符
+    // 转义文件名中的特殊字符（用于正则）
+    const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const fileTagRegex = new RegExp(`\\n?\\[FILE:${escapedFileName}\\]\\n?`, 'g');
+    
+    // 移除文件标记，并清理多余的连续换行符
+    let newVisible = visiblePart.replace(fileTagRegex, '\n');
+    // 清理连续的换行符（最多保留两个）
+    newVisible = newVisible.replace(/\n{3,}/g, '\n\n');
+    // 清理开头和结尾的换行符
+    newVisible = newVisible.trim();
+    
+    // 从隐藏数据中移除文件内容
+    let filesMap: Record<string, string> = {};
+    try {
+      if (hiddenPart) filesMap = JSON.parse(hiddenPart.trim());
+    } catch (e) {
+      console.error('解析隐藏数据失败:', e);
+    }
+    delete filesMap[fileName];
+    
+    const newHidden = Object.keys(filesMap).length > 0 ? JSON.stringify(filesMap) : '';
+    const finalContent = newHidden ? newVisible + HIDDEN_DATA_SEPARATOR + newHidden : newVisible;
+      
+    setContent(finalContent);
+    debouncedSave(finalContent);
+    toast.success(`已移除文件: ${fileName}`);
+  };
+
+  // 更新文本块
+  const updateTextBlock = (id: string, newText: string) => {
+    const newVisible = blocks.map(b => {
+      if (b.id === id) return newText;
+      return b.raw;
+    }).join('');
+
+    const parts = content.split(HIDDEN_DATA_SEPARATOR);
+    const hiddenPart = parts.length > 1 ? parts[1] : '';
+    const finalContent = hiddenPart ? newVisible + HIDDEN_DATA_SEPARATOR + hiddenPart : newVisible;
+    
+    setContent(finalContent);
+    debouncedSave(finalContent);
   };
 
   const handleFileUpload = useCallback(async (file: File) => {
-    const fileName = file.name.toLowerCase();
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
-    // 支持PDF和Word文档 - 使用前端库解析
-    if (fileName.endsWith('.pdf') || fileName.endsWith('.docx')) {
-      try {
-        toast.loading(`正在解析文件: ${file.name}...`, { id: 'file-upload' });
-        
-        let extractedText = '';
-        
-        // 解析PDF文件 - 使用pdf.js
-        if (fileName.endsWith('.pdf')) {
-          // 动态加载pdf.js
-          const pdfjsLib = await import('pdfjs-dist');
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-          
-          const arrayBuffer = await file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          
-          let fullText = '';
-          for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map((item: any) => item.str).join(' ');
-            fullText += pageText + '\n\n';
+    const fileName = file.name;
+    try {
+      toast.loading(`正在解析文件: ${fileName}...`, { id: 'file-upload' });
+      let extractedText = '';
+
+      // --- 解析逻辑 ---
+      const extension = fileName.toLowerCase().split('.').pop();
+      if (extension === 'pdf') {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const items = textContent.items as any[];
+          items.sort((a, b) => (Math.abs(a.transform[5] - b.transform[5]) < 5 ? a.transform[4] - b.transform[4] : b.transform[5] - a.transform[5]));
+          let lastY = -1;
+          for (const item of items) {
+            if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) fullText += '\n';
+            fullText += item.str + ' ';
+            lastY = item.transform[5];
           }
-          extractedText = fullText;
+          fullText += '\n\n';
         }
-        // 解析Word文档 - 使用mammoth.js
-        else if (fileName.endsWith('.docx')) {
-          // 动态加载mammoth
-          const mammoth = await import('mammoth');
-          const arrayBuffer = await file.arrayBuffer();
-          const result = await mammoth.extractRawText({ arrayBuffer });
-          extractedText = result.value;
-          
-          if (result.messages.length > 0) {
-            console.warn('Word document parsing warnings:', result.messages);
-          }
+        extractedText = fullText.trim();
+      } else if (extension === 'docx') {
+        const mammoth = await import('mammoth');
+        const arrayBuffer = await file.arrayBuffer();
+        try {
+          extractedText = (await mammoth.extractRawText({ arrayBuffer })).value;
+        } catch (e) {
+          const JSZip = (await import('jszip')).default;
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          extractedText = (await zip.file('word/document.xml')?.async('string'))?.replace(/<w:p[^>]*>/g, '\n').replace(/<[^>]+>/g, '').trim() || '';
         }
-        
-        if (!extractedText || extractedText.trim().length === 0) {
-          throw new Error('文件内容为空或无法提取文本');
-        }
-        
-        const newContent = content ? `${content}\n\n${extractedText}` : extractedText;
-        setContent(newContent);
-        
-        // 使用setTimeout确保DOM更新后再调整高度
-        setTimeout(() => {
-          adjustHeight();
-        }, 0);
-        
-        debouncedSave(newContent);
-        toast.success(`已加载文件: ${file.name}`, { id: 'file-upload' });
-      } catch (error) {
-        console.error('File upload error:', error);
-        toast.error(
-          error instanceof Error ? error.message : '读取文件失败',
-          { id: 'file-upload' }
-        );
+      } else {
+        extractedText = await file.text();
       }
-    }
-    // 支持文本文件（.txt, .md, .json等）
-    else if (['.txt', '.md', '.json', '.csv', '.log'].includes(fileExtension)) {
+
+      if (!extractedText) throw new Error('无法提取文本内容');
+
+      // 更新隐藏数据
+      const [visiblePart, hiddenPart] = content.split(HIDDEN_DATA_SEPARATOR);
+      let filesMap: Record<string, string> = {};
       try {
-        const text = await file.text();
-        const newContent = content ? `${content}\n\n${text}` : text;
-        setContent(newContent);
-        // 使用setTimeout确保DOM更新后再调整高度
-        setTimeout(() => {
-          adjustHeight();
-        }, 0);
-        debouncedSave(newContent);
-        toast.success(`已加载文件: ${file.name}`);
-      } catch (error) {
-        console.error('File upload error:', error);
-        toast.error('读取文件失败');
-      }
-    } else {
-      toast.error('仅支持PDF、Word文档（.pdf, .docx）和文本文件（.txt, .md, .json, .csv, .log）');
+        if (hiddenPart) filesMap = JSON.parse(hiddenPart.trim());
+      } catch (e) {}
+      filesMap[fileName] = extractedText;
+      
+      const newHidden = JSON.stringify(filesMap);
+      // 优化插入换行符
+      const fileTag = `\n[FILE:${fileName}]\n`;
+      const finalContent = visiblePart.trimEnd() + fileTag + HIDDEN_DATA_SEPARATOR + newHidden;
+
+      setContent(finalContent);
+      toast.success(`已添加文件: ${fileName}`, { id: 'file-upload' });
+      debouncedSave(finalContent);
+
+    } catch (error) {
+      toast.error('上传解析失败', { id: 'file-upload' });
     }
   }, [content, debouncedSave]);
 
-  const handleFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files || []);
-      files.forEach(handleFileUpload);
-      // 重置input，允许重复选择同一文件
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    },
-    [handleFileUpload]
-  );
+  const handleUploadClick = () => fileInputRef.current?.click();
 
   if (!project) return null;
 
-  const charCount = content.length;
-  const isOverLimit = charCount > MAX_RECOMMENDED_CHARS;
-
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain bg-background/50 custom-scrollbar">
-      {/* 标题栏 - 固定在编辑区域最顶部 */}
-      <div className="flex items-center justify-between border-b border-border/50 pb-6 px-8 pt-8 sticky top-0 bg-background/95 backdrop-blur-md z-20">
+    <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain bg-background custom-scrollbar">
+      {/* 顶部标题栏 */}
+      <div className="flex items-center justify-between border-b border-border/40 pb-6 px-8 pt-8 sticky top-0 bg-background/95 backdrop-blur-md z-20">
         <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-            <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground/80">
-              <span className={cn(
-                "font-medium px-2 py-0.5 rounded bg-muted/50",
-                isOverLimit && "text-destructive bg-destructive/10"
-              )}>
-                Characters: {charCount.toLocaleString()} / {MAX_RECOMMENDED_CHARS.toLocaleString()} Recommended
-              </span>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground/90">{project.name}</h1>
+            <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium">
+              <span>Smart Document Editor</span>
               {isSaving && (
-                <span className="animate-pulse flex items-center gap-1">
-                  <span className="h-1 w-1 rounded-full bg-primary" />
-                  Auto-saving...
+                <span className="flex items-center gap-1.5 text-primary animate-pulse">
+                  <Loader2Icon size={12} className="animate-spin" />
+                  Saving Changes
                 </span>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <input
               type="file"
               ref={fileInputRef}
-              onChange={handleFileChange}
+              onChange={(e) => Array.from(e.target.files || []).forEach(handleFileUpload)}
               accept=".pdf,.docx,.txt,.md,.json,.csv,.log"
               className="hidden"
               multiple
             />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-xs"
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleUploadClick} 
+              className="rounded-full px-4 h-9 bg-background hover:bg-muted border-border/60 transition-all hover:shadow-md"
             >
-              <PaperclipIcon size={14} className="mr-2" />
+              <PaperclipIcon size={16} className="mr-2 text-primary" />
               上传文件
             </Button>
           </div>
         </div>
       </div>
-      {/* 内容区域 */}
-      <div className="flex-1 min-h-0 px-8 pb-8">
-        <div className="max-w-4xl mx-auto w-full">
-          <textarea
-            ref={textareaRef}
-            className="w-full min-h-[700px] bg-transparent outline-none resize-none text-lg leading-relaxed mt-8 pb-32 text-foreground/90 placeholder:text-muted-foreground/30 selection:bg-primary/20 transition-all duration-200"
-            placeholder="在此处粘贴项目背景、行业报告、上下文等信息... 或点击右上角上传文件。AI 将基于此处内容进行回答。"
-            value={content}
-            onChange={handleChange}
-            style={{ overflow: 'hidden' }}
-          />
+
+      {/* 主编辑区 */}
+      <div className="flex-1 min-h-0 px-8 pb-32">
+        <div className="max-w-4xl mx-auto w-full pt-8 space-y-1">
+          {blocks.map((block) => (
+            block.type === 'file' ? (
+              <VisualFileCard 
+                key={block.id} 
+                name={block.fileName || ''} 
+                onRemove={() => block.fileName && removeFile(block.fileName)}
+              />
+            ) : (
+              <AutoTextArea
+                key={block.id}
+                value={block.content || ''}
+                onChange={(val) => updateTextBlock(block.id, val)}
+                placeholder="在此处输入内容..."
+              />
+            )
+          ))}
+          
+          {/* 如果最后一个块是文件，增加一个额外的输入区以便继续输入（修复问题1） */}
+          {blocks[blocks.length - 1]?.type === 'file' && (
+             <AutoTextArea
+                key={`extra-bottom-${project?.id}`}
+                value={getTextAfterLastFile}
+                onChange={(val) => {
+                  const parts = content.split(HIDDEN_DATA_SEPARATOR);
+                  const visiblePart = parts[0] || '';
+                  
+                  // 找到最后一个文件标记的位置
+                  const fileTagRegex = /\[FILE:[^\]]+\]/g;
+                  const matches = [...visiblePart.matchAll(fileTagRegex)];
+                  
+                  if (matches.length > 0) {
+                    // 找到最后一个文件标记的结束位置
+                    const lastMatch = matches[matches.length - 1];
+                    const lastFileEndIndex = lastMatch.index! + lastMatch[0].length;
+                    
+                    // 保留最后一个文件标记之前的内容，然后添加新输入的内容
+                    const beforeLastFile = visiblePart.substring(0, lastFileEndIndex);
+                    const newVisible = beforeLastFile + (visiblePart[lastFileEndIndex] === '\n' ? '' : '\n') + val;
+                    
+                    const finalContent = parts.length > 1 
+                      ? newVisible + HIDDEN_DATA_SEPARATOR + parts[1] 
+                      : newVisible;
+                    setContent(finalContent);
+                    debouncedSave(finalContent);
+                  } else {
+                    // 如果没有找到文件标记（不应该发生），直接追加
+                    const newVisible = visiblePart + '\n' + val;
+                    const finalContent = parts.length > 1 
+                      ? newVisible + HIDDEN_DATA_SEPARATOR + parts[1] 
+                      : newVisible;
+                    setContent(finalContent);
+                    debouncedSave(finalContent);
+                  }
+                }}
+                placeholder="继续输入内容..."
+             />
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * 自动增长的文本编辑区组件
+ */
+function AutoTextArea({ 
+  value, 
+  onChange, 
+  placeholder 
+}: { 
+  value: string; 
+  onChange: (val: string) => void;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = 'auto';
+      ref.current.style.height = `${ref.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full bg-transparent outline-none resize-none text-lg leading-relaxed text-foreground/90 placeholder:text-muted-foreground/20 selection:bg-primary/20 transition-all duration-200 py-2 min-h-[50px] overflow-hidden"
+      placeholder={placeholder}
+      rows={1}
+    />
   );
 }

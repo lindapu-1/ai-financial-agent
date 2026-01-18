@@ -7,13 +7,29 @@ export function useScrollToBottom<T extends HTMLElement>(): [
   const containerRef = useRef<T>(null);
   const endRef = useRef<T>(null);
 
+  const scrollToBottom = (smooth = false) => {
+    const container = containerRef.current;
+    const end = endRef.current;
+
+    if (container && end) {
+      // 使用 smooth 或 instant 行为
+      end.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant', block: 'end' });
+    }
+  };
+
   useEffect(() => {
     const container = containerRef.current;
     const end = endRef.current;
 
     if (container && end) {
+      // 初始滚动到底部（instant，立即）
+      const initialScrollTimer = setTimeout(() => {
+        scrollToBottom(false);
+      }, 0);
+
       const observer = new MutationObserver(() => {
-        end.scrollIntoView({ behavior: 'instant', block: 'end' });
+        // 内容变化时平滑滚动到底部
+        scrollToBottom(true);
       });
 
       observer.observe(container, {
@@ -23,7 +39,10 @@ export function useScrollToBottom<T extends HTMLElement>(): [
         characterData: true,
       });
 
-      return () => observer.disconnect();
+      return () => {
+        clearTimeout(initialScrollTimer);
+        observer.disconnect();
+      };
     }
   }, []);
 

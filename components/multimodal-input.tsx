@@ -442,10 +442,17 @@ function PureStopButton({
   const { setQueryLoading } = useQueryLoading();
 
   const handleStop = (event: React.MouseEvent) => {
-        event.preventDefault();
-        stop();
-        setQueryLoading(false, []);
-        setMessages((messages) => sanitizeUIMessages(messages));
+    event.preventDefault();
+    
+    // 先清理 query loading 状态（立即生效）
+    setQueryLoading(false, []);
+    
+    // 然后调用 stop（这会清理 useChat 的 isLoading 状态）
+    stop();
+    
+    // 清理消息中的不完整内容
+    setMessages((messages) => sanitizeUIMessages(messages));
+    
     toast.success('已停止生成，可以发送新消息');
   };
 

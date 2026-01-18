@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import useSWR from 'swr';
+import equal from 'fast-deep-equal';
 
 interface QueryLoadingState {
   isLoading: boolean;
@@ -43,12 +44,24 @@ export function useQueryLoading() {
     return loadingState;
   }, [loadingState]);
 
+  // 使用 useRef 跟踪上一次的状态，避免重复更新
+  const lastStateRef = useRef<QueryLoadingState>(initialState);
+  // 使用 useRef 稳定 setLoadingState 的引用
+  const setLoadingStateRef = useRef(setLoadingState);
+  setLoadingStateRef.current = setLoadingState;
+
   const setQueryLoading = useCallback((isLoading: boolean, taskNames: string[] = []) => {
-    setLoadingState({
-      isLoading,
-      taskNames
-    }, false);
-  }, [setLoadingState]);
+    // 比较新状态和旧状态，只有真正改变时才更新
+    const newState = { isLoading, taskNames };
+    const lastState = lastStateRef.current;
+    
+    // 使用 fast-deep-equal 进行深度比较
+    if (!equal(lastState, newState)) {
+      lastStateRef.current = newState;
+      // 使用 revalidate: false 避免触发重新验证
+      setLoadingStateRef.current(newState, { revalidate: false });
+    }
+  }, []); // 移除依赖项，使用 ref 来访问最新的 setLoadingState
 
   return { state, setQueryLoading };
 } 
