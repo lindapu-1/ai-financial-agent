@@ -131,7 +131,23 @@ export function Editor({ project }: EditorProps) {
     try {
       await updateProjectContent({ id: project.id, content: newContent });
     } catch (error) {
-      toast.error('保存失败');
+      console.error('保存项目内容失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      
+      // 根据错误类型显示不同的提示
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('未授权')) {
+        toast.error('保存失败：请先登录', {
+          description: '您的登录状态已过期，请刷新页面重新登录',
+        });
+      } else if (errorMessage.includes('too large') || errorMessage.includes('太大')) {
+        toast.error('保存失败：内容过大', {
+          description: '文件内容太大，请尝试删除一些文件或文本',
+        });
+      } else {
+        toast.error('保存失败', {
+          description: errorMessage.length > 50 ? `${errorMessage.substring(0, 50)}...` : errorMessage,
+        });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -187,8 +203,15 @@ export function Editor({ project }: EditorProps) {
 
   const handleFileUpload = useCallback(async (file: File) => {
     const fileName = file.name;
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    
+    // 检查文件大小（警告但不阻止）
+    if (file.size > 10 * 1024 * 1024) { // 10MB
+      toast.warning(`文件较大 (${fileSizeMB}MB)，解析可能需要较长时间`, { id: 'file-upload-warning' });
+    }
+    
     try {
-      toast.loading(`正在解析文件: ${fileName}...`, { id: 'file-upload' });
+      toast.loading(`正在解析文件: ${fileName} (${fileSizeMB}MB)...`, { id: 'file-upload' });
       let extractedText = '';
 
       // --- 解析逻辑 ---
@@ -229,21 +252,42 @@ export function Editor({ project }: EditorProps) {
 
       if (!extractedText) throw new Error('无法提取文本内容');
 
+      // 检查提取的文本大小
+      const extractedSizeMB = (new TextEncoder().encode(extractedText).length / (1024 * 1024)).toFixed(2);
+      if (parseFloat(extractedSizeMB) > 20) {
+        toast.warning(`提取的文本较大 (${extractedSizeMB}MB)，保存可能需要较长时间`, { id: 'file-upload-size-warning' });
+      }
+
       // 更新隐藏数据
       const [visiblePart, hiddenPart] = content.split(HIDDEN_DATA_SEPARATOR);
       let filesMap: Record<string, string> = {};
       try {
         if (hiddenPart) filesMap = JSON.parse(hiddenPart.trim());
-      } catch (e) {}
+      } catch (e) {
+        console.warn('解析隐藏数据失败，将创建新的文件映射:', e);
+      }
       filesMap[fileName] = extractedText;
       
       const newHidden = JSON.stringify(filesMap);
+      
+      // 检查总内容大小
+      const totalContent = visiblePart.trimEnd() + `\n[FILE:${fileName}]\n` + HIDDEN_DATA_SEPARATOR + newHidden;
+      const totalSizeMB = (new TextEncoder().encode(totalContent).length / (1024 * 1024)).toFixed(2);
+      
+      if (parseFloat(totalSizeMB) > 50) {
+        toast.error('内容过大，无法保存', {
+          description: `总内容大小 ${totalSizeMB}MB 超过限制 (50MB)，请删除一些文件`,
+          id: 'file-upload',
+        });
+        return;
+      }
+      
       // 优化插入换行符
       const fileTag = `\n[FILE:${fileName}]\n`;
       const finalContent = visiblePart.trimEnd() + fileTag + HIDDEN_DATA_SEPARATOR + newHidden;
 
       setContent(finalContent);
-      toast.success(`已添加文件: ${fileName}`, { id: 'file-upload' });
+      toast.success(`已添加文件: ${fileName} (${extractedSizeMB}MB)`, { id: 'file-upload' });
       debouncedSave(finalContent);
 
     } catch (error) {

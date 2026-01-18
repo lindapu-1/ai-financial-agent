@@ -137,12 +137,39 @@ export async function updateProjectContent({
   content: string;
 }) {
   try {
-    return await db
+    // 记录内容大小用于调试
+    const contentSize = new TextEncoder().encode(content).length;
+    const contentSizeMB = (contentSize / (1024 * 1024)).toFixed(2);
+    
+    if (contentSize > 50 * 1024 * 1024) { // 50MB
+      console.warn(`警告：项目内容较大 (${contentSizeMB}MB)，可能影响保存性能`);
+    }
+    
+    const result = await db
       .update(project)
       .set({ content, updatedAt: new Date() })
       .where(eq(project.id, id));
+    
+    console.log(`✅ 成功更新项目内容 (${contentSizeMB}MB)`);
+    return result;
   } catch (error) {
-    console.error('Failed to update project content in database');
+    console.error('❌ 更新项目内容失败:', error);
+    console.error('项目 ID:', id);
+    console.error('内容大小:', new TextEncoder().encode(content).length, 'bytes');
+    
+    // 提供更详细的错误信息
+    if (error instanceof Error) {
+      if (error.message.includes('relation') || error.message.includes('does not exist')) {
+        throw new Error('数据库表不存在，请运行数据库迁移: pnpm db:migrate');
+      }
+      if (error.message.includes('connection') || error.message.includes('timeout')) {
+        throw new Error('数据库连接失败，请检查数据库是否运行');
+      }
+      if (error.message.includes('value too long')) {
+        throw new Error('内容过大，请尝试删除一些文件或文本');
+      }
+    }
+    
     throw error;
   }
 }
