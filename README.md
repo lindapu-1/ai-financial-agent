@@ -64,11 +64,19 @@ POSTGRES_URL=postgresql://postgres:postgres@localhost:5433/hony_agent
 #
 # 选项 C：使用远程 PostgreSQL（如果有云数据库）
 # POSTGRES_URL=postgresql://用户名:密码@远程地址:5432/数据库名
+
+# NextAuth 认证密钥（必须配置！）
+# 用于加密 JWT token 和 session cookie
+# 生成方式：在终端运行 openssl rand -base64 32
+# 示例值（请替换为你自己生成的随机字符串）：
+AUTH_SECRET=your-random-secret-key-here-minimum-32-characters
 ```
 
 **重要提示**：
 - `POSTGRES_URL` 是**必须配置**的，否则数据库无法连接
+- `AUTH_SECRET` 是**必须配置**的，否则会出现 "MissingSecret" 错误
 - 根据你选择的数据库选项，修改对应的连接字符串
+- 生成 `AUTH_SECRET`：在终端运行 `openssl rand -base64 32`，将生成的字符串复制到 `.env.local`
 
 ### 4. 启动项目
 
@@ -219,6 +227,13 @@ pnpm dev
 
 - **Q: 运行 `pnpm db:migrate` 时提示 "POSTGRES_URL is not defined"?**
   - **A**: 确保你已经创建了 `.env.local` 文件，并且配置了 `POSTGRES_URL=postgresql://postgres:postgres@localhost:5433/hony_agent`。如果使用 VS Code，可能需要重启终端或编辑器。
+
+- **Q: 启动应用时提示 "MissingSecret: Please define a 'secret'" 错误？**
+  - **A**: 这是因为缺少 `AUTH_SECRET` 配置。解决步骤：
+    1. 在终端运行 `openssl rand -base64 32` 生成一个随机密钥
+    2. 复制生成的字符串（例如：`ZPedzZlRjg5ajNn3GSv2E8E1ny5xIJ3IIROYt0oX2/4=`）
+    3. 在 `.env.local` 文件中添加：`AUTH_SECRET=你复制的字符串`
+    4. 保存文件并重启开发服务器（停止 `pnpm dev` 后重新运行）
 
 - **Q: 我能看到作者的聊天记录吗？**
   - **A**: 不能。数据库运行在你自己的 Docker 本地环境中，数据是完全隔离且私密的。
