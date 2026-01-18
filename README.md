@@ -29,10 +29,10 @@ npm install -g pnpm
 pnpm install
 ```
 
-### 3. 配置 API Key (重要)
+### 3. 配置环境变量 (重要)
 在项目根目录下，你会看到一个 `.env.example` 文件：
 1. 在文件夹里手动将 `.env.example` 复制一份，改名为 `.env.local`。
-2. 用记事本（或 VS Code）打开 `.env.local`，填入你的 API Key：
+2. 用记事本（或 VS Code）打开 `.env.local`，填入你的配置：
 
 ```bash
 # OpenAI API Key (推荐，默认模型使用)
@@ -49,7 +49,15 @@ FINANCIAL_DATASETS_API_KEY=your-key...
 
 # Tavily API Key (可选，用于联网搜索)
 TAVILY_API_KEY=tvly-xxxx...
+
+# PostgreSQL 数据库连接字符串（必须配置！）
+# 如果使用下面的 Docker 命令启动数据库，直接使用这个配置即可：
+POSTGRES_URL=postgresql://postgres:postgres@localhost:5433/hony_agent
 ```
+
+**重要提示**：
+- `POSTGRES_URL` 是**必须配置**的，否则数据库无法连接
+- 如果你修改了 Docker 命令中的数据库配置（用户名、密码、端口等），需要相应修改 `POSTGRES_URL`
 
 ### 4. 启动项目 (一键运行)
 确保你的 **Docker Desktop** 已经打开并正在运行（看到鲸鱼图标变绿），然后执行：
@@ -158,12 +166,25 @@ pnpm dev
 
 - **Q: 数据库启动失败，提示 "Name conflict"?**
   - **A**: 说明你之前运行过旧容器。请运行 `docker rm -f hony-agent-db` 然后再执行步骤 4 的第一条指令。
+
+- **Q: 运行 `pnpm db:migrate` 时提示 "POSTGRES_URL is not defined"?**
+  - **A**: 确保你已经创建了 `.env.local` 文件，并且配置了 `POSTGRES_URL=postgresql://postgres:postgres@localhost:5433/hony_agent`。如果使用 VS Code，可能需要重启终端或编辑器。
+
 - **Q: 我能看到作者的聊天记录吗？**
   - **A**: 不能。数据库运行在你自己的 Docker 本地环境中，数据是完全隔离且私密的。
+
 - **Q: 为什么技能栏是空的？**
   - **A**: 首次进入 Canvas 模式并登录后，系统会自动为您初始化默认技能。
+
 - **Q: 粘贴几万字会卡吗？**
   - **A**: 不会。编辑器已针对长文本进行了高度自适应和性能优化。
+
+- **Q: 启动应用后页面显示错误？**
+  - **A**: 检查以下几点：
+    1. Docker Desktop 是否正在运行（看到绿色图标）
+    2. `.env.local` 文件是否存在且配置正确
+    3. 数据库是否成功启动（运行 `docker ps` 查看容器状态）
+    4. 是否成功运行了 `pnpm db:migrate`（应该看到 "✅ Migrations completed"）
 
 ---
 
