@@ -31,6 +31,7 @@ import { SuggestedActions } from './suggested-actions';
 import equal from 'fast-deep-equal';
 import { TickerSuggestions } from './ticker-suggestions';
 import { useQueryLoading } from '@/hooks/use-query-loading';
+import { usePathname } from 'next/navigation';
 
 const TICKER_SUGGESTIONS = ['AAPL', 'GOOGL', 'MSFT', 'NVDA', 'TSLA'];
 
@@ -74,6 +75,7 @@ function PureMultimodalInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
   const { state: queryLoadingState } = useQueryLoading();
+  const pathname = usePathname();
   
   // 如果 useChat 的 isLoading 或 queryLoadingState 中任何一个为 true，都显示停止按钮
   const shouldShowStopButton = isLoading || queryLoadingState.isLoading;
@@ -166,7 +168,25 @@ function PureMultimodalInput({
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
-    window.history.replaceState({}, '', `/chat/${chatId}`);
+    // 根据当前路径决定应该更新到哪个路由
+    // 保持当前路由前缀（/canvas, /general, /chat），只更新 ID
+    let targetPath = `/chat/${chatId}`; // 默认回退到 /chat
+    
+    if (pathname?.startsWith('/canvas/')) {
+      targetPath = `/canvas/${chatId}`;
+    } else if (pathname?.startsWith('/general/')) {
+      targetPath = `/general/${chatId}`;
+    } else if (pathname?.startsWith('/chat/')) {
+      targetPath = `/chat/${chatId}`;
+    } else if (pathname === '/canvas') {
+      // 如果当前在 /canvas（没有 ID），发送第一条消息后应该跳转到 /canvas/{chatId}
+      targetPath = `/canvas/${chatId}`;
+    } else if (pathname === '/general') {
+      // 如果当前在 /general（没有 ID），发送第一条消息后应该跳转到 /general/{chatId}
+      targetPath = `/general/${chatId}`;
+    }
+    
+    window.history.replaceState({}, '', targetPath);
 
     handleSubmit(undefined, {
       experimental_attachments: attachments,
@@ -185,6 +205,7 @@ function PureMultimodalInput({
     setLocalStorageInput,
     width,
     chatId,
+    pathname,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -421,10 +442,10 @@ function PureStopButton({
   const { setQueryLoading } = useQueryLoading();
 
   const handleStop = (event: React.MouseEvent) => {
-    event.preventDefault();
-    stop();
-    setQueryLoading(false, []);
-    setMessages((messages) => sanitizeUIMessages(messages));
+        event.preventDefault();
+        stop();
+        setQueryLoading(false, []);
+        setMessages((messages) => sanitizeUIMessages(messages));
     toast.success('已停止生成，可以发送新消息');
   };
 

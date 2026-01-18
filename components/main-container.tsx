@@ -17,8 +17,8 @@ export function MainContainer({ id, selectedModelId, initialMessages = [] }: Mai
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
-      {/* Chat Mode */}
-      <div className={`absolute inset-0 transition-opacity duration-300 ${mode === 'chat' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+      {/* General Mode */}
+      <div className={`absolute inset-0 transition-opacity duration-300 ${mode === 'general' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
         <Chat
           id={id}
           initialMessages={initialMessages}

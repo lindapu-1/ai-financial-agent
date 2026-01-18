@@ -14,48 +14,54 @@ export function GlobalHeader() {
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-1 mr-2" />
         <Link
-          href="/"
+          href="/general"
           className="flex items-center"
         >
           <span className="text-lg font-bold text-primary tracking-tight">
-            FinGPT
+            Hony Capital
           </span>
         </Link>
       </div>
 
       <div className="flex bg-muted rounded-lg p-1 scale-90">
         <Button
+          asChild
           variant="ghost"
           size="sm"
           className={cn(
             "px-6 h-7 rounded-md transition-all text-xs",
-            mode === 'chat' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+            mode === 'general' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
           )}
-          onClick={() => setMode('chat')}
         >
-          Chat
+          <Link href="/general">
+            General
+          </Link>
         </Button>
         <Button
+          asChild
           variant="ghost"
           size="sm"
           className={cn(
             "px-6 h-7 rounded-md transition-all text-xs",
             mode === 'canvas' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
           )}
-          onClick={() => setMode('canvas')}
         >
-          Canvas
+          <Link href="/canvas">
+            Canvas
+          </Link>
         </Button>
         <Button
+          asChild
           variant="ghost"
           size="sm"
           className={cn(
             "px-6 h-7 rounded-md transition-all text-xs",
             mode === 'portfolio' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
           )}
-          onClick={() => setMode('portfolio')}
         >
-          Portfolio
+          <Link href="/portfolio">
+            Portfolio
+          </Link>
         </Button>
       </div>
 

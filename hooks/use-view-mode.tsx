@@ -1,8 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
-export type ViewMode = 'chat' | 'canvas' | 'portfolio';
+export type ViewMode = 'general' | 'canvas' | 'portfolio';
 
 interface ViewModeContextType {
   mode: ViewMode;
@@ -12,7 +13,19 @@ interface ViewModeContextType {
 const ViewModeContext = createContext<ViewModeContextType | undefined>(undefined);
 
 export function ViewModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<ViewMode>('chat');
+  const pathname = usePathname();
+  const [mode, setMode] = useState<ViewMode>('general');
+
+  // 根据当前路径自动同步模式
+  useEffect(() => {
+    if (pathname.startsWith('/canvas')) {
+      setMode('canvas');
+    } else if (pathname.startsWith('/portfolio')) {
+      setMode('portfolio');
+    } else if (pathname.startsWith('/general') || pathname === '/') {
+      setMode('general');
+    }
+  }, [pathname]);
 
   return (
     <ViewModeContext.Provider value={{ mode, setMode }}>

@@ -3,7 +3,6 @@ import { notFound, redirect } from 'next/navigation';
 
 import { auth } from '@/app/(auth)/auth';
 import { Chat } from '@/components/chat';
-import { MainContainer } from '@/components/main-container';
 import { DEFAULT_MODEL_NAME, models } from '@/lib/ai/models';
 import { getChatById, getMessagesByChatId } from '@/lib/db/queries';
 import { convertToUIMessages } from '@/lib/utils';
@@ -16,7 +15,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const chat = await getChatById({ id });
 
   if (!chat) {
-    // 如果聊天不存在，重定向到首页而不是显示404
     redirect('/');
   }
 
@@ -52,10 +50,12 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <MainContainer
+      <Chat
         id={chat.id}
         initialMessages={convertToUIMessages(messagesFromDb)}
         selectedModelId={selectedModelId}
+        selectedVisibilityType={chat.visibility}
+        isReadonly={false}
       />
       <DataStreamHandler id={id} />
     </>

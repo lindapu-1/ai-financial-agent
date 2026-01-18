@@ -96,7 +96,7 @@ export function AiSidebar({ project }: AiSidebarProps) {
   }, [project?.id]);
 
   return (
-    <div className="flex flex-col h-full bg-background border-l relative">
+    <div className="flex flex-col h-full min-h-0 bg-background border-l relative">
       {/* 顶部：模型选择 */}
       <div className="p-3 border-b flex items-center justify-between gap-2 shrink-0">
         <ModelSelector 
@@ -106,13 +106,13 @@ export function AiSidebar({ project }: AiSidebarProps) {
       </div>
 
       {/* 消息区域 */}
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 min-h-0 overflow-hidden relative">
         {!project ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-8">
             <p className="text-sm">请先选择一个项目开始对话</p>
           </div>
         ) : (
-          <div className="h-full flex flex-col">
+          <div className="h-full flex flex-col min-h-0">
             <Messages
               chatId={chatId}
               isLoading={isLoading}

@@ -35,7 +35,7 @@ function PureChatHeader({
               open ? 'md:hidden' : ''
             }`}
             onClick={() => {
-              router.push('/');
+              router.push('/general');
               router.refresh();
             }}
           >

@@ -162,9 +162,10 @@ export function Editor({ project }: EditorProps) {
   const isOverLimit = charCount > MAX_RECOMMENDED_CHARS;
 
   return (
-    <div className="flex-1 flex flex-col p-8 overflow-y-auto bg-background/50 custom-scrollbar">
-      <div className="max-w-4xl mx-auto w-full flex flex-col gap-4">
-        <div className="flex items-center justify-between border-b border-border/50 pb-6 sticky top-0 bg-background/80 backdrop-blur-md z-10 -mx-2 px-2">
+    <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain bg-background/50 custom-scrollbar">
+      {/* 标题栏 - 固定在编辑区域最顶部 */}
+      <div className="flex items-center justify-between border-b border-border/50 pb-6 px-8 pt-8 sticky top-0 bg-background/95 backdrop-blur-md z-20">
+        <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
             <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground/80">
@@ -202,14 +203,19 @@ export function Editor({ project }: EditorProps) {
             </Button>
           </div>
         </div>
-        <textarea
-          ref={textareaRef}
-          className="w-full min-h-[700px] bg-transparent outline-none resize-none text-lg leading-relaxed mt-8 pb-32 text-foreground/90 placeholder:text-muted-foreground/30 selection:bg-primary/20 transition-all duration-200"
-          placeholder="在此处粘贴项目背景、行业报告、上下文等信息... 或点击右上角上传文件。AI 将基于此处内容进行回答。"
-          value={content}
-          onChange={handleChange}
-          style={{ overflow: 'hidden' }}
-        />
+      </div>
+      {/* 内容区域 */}
+      <div className="flex-1 min-h-0 px-8 pb-8">
+        <div className="max-w-4xl mx-auto w-full">
+          <textarea
+            ref={textareaRef}
+            className="w-full min-h-[700px] bg-transparent outline-none resize-none text-lg leading-relaxed mt-8 pb-32 text-foreground/90 placeholder:text-muted-foreground/30 selection:bg-primary/20 transition-all duration-200"
+            placeholder="在此处粘贴项目背景、行业报告、上下文等信息... 或点击右上角上传文件。AI 将基于此处内容进行回答。"
+            value={content}
+            onChange={handleChange}
+            style={{ overflow: 'hidden' }}
+          />
+        </div>
       </div>
     </div>
   );

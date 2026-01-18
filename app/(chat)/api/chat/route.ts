@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       modelId,
       financialDatasetsApiKey,
       modelApiKey,
-      mode = 'chat',
+      mode = 'general',
       projectId,
       skillId,
     }: {
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       modelId: string;
       financialDatasetsApiKey?: string;
       modelApiKey?: string;
-      mode?: 'chat' | 'canvas';
+      mode?: 'general' | 'canvas';
       projectId?: string;
       skillId?: string;
     } = await request.json();
@@ -274,7 +274,7 @@ ${skillPromptContent}
         }
       }
 
-      // --- CHAT 模式逻辑 (原有逻辑) ---
+      // --- GENERAL 模式逻辑 (原有逻辑) ---
       // Initialize tools only when we have a Financial Datasets API key.
       const financialToolsManager =
         !isPlaceholderKey(effectiveFinancialDatasetsApiKey)

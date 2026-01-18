@@ -41,7 +41,7 @@ function PureMessages({
 
   return (
     <div
-      className="flex flex-col min-w-0 gap-4 flex-1 overflow-y-scroll mt-6"
+      className="flex flex-col min-w-0 min-h-0 gap-4 flex-1 overflow-y-auto overscroll-contain mt-6"
     >
       {messages.map((message, index) => (
         <PreviewMessage

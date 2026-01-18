@@ -81,7 +81,7 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
                     return;
                   }
                   
-                  window.history.replaceState({}, '', `/chat/${chatId}`);
+                  window.history.replaceState({}, '', `/general/${chatId}`);
                   append({
                     role: 'user',
                     content: suggestedAction.action,

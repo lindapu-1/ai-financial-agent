@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Project } from '@/lib/db/schema';
@@ -23,6 +24,7 @@ import { Label } from './ui/label';
 
 export function ProjectList() {
   const { activeProject, setActiveProject } = useProject();
+  const router = useRouter();
   const { data: projects, mutate, isLoading } = useSWR<Project[]>('/api/projects', fetcher, {
     fallbackData: [],
   });
@@ -45,6 +47,7 @@ export function ProjectList() {
       setNewProjectName('');
       setIsCreateDialogOpen(false);
       toast.success('Project created successfully');
+      router.push(`/canvas/${id}`);
     } catch (error) {
       toast.error('Failed to create project');
     } finally {
@@ -106,7 +109,11 @@ export function ProjectList() {
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
                   : 'hover:bg-sidebar-accent/50 text-muted-foreground hover:text-foreground'
               )}
-              onClick={() => setActiveProject(p)}
+              onClick={() => {
+                // 关键：先更新 context，再跳转路由，确保 CanvasView/AiSidebar 立即切换到正确项目
+                setActiveProject(p);
+                router.push(`/canvas/${p.id}`);
+              }}
             >
               <span className="truncate flex-1">{p.name}</span>
               <button

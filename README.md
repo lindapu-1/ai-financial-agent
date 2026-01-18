@@ -1,6 +1,6 @@
 # Hony Capital AI Agent 🤖 (FinGPT Internal)
 
-这是一个为弘毅投资（Hony Capital）深度定制的投研 AI 助手，内部代号 **FinGPT**。它不仅支持基于任务拆解的 **智能聊天 (Chat)**，还拥有全新的 **创作画布 (Canvas)** 模式和 **持仓管理 (Portfolio)** 功能，旨在帮助投研人员全方位提升工作效率。
+这是一个为弘毅投资（Hony Capital）深度定制的投研 AI 助手，内部代号 **FinGPT**。它不仅支持基于任务拆解的 **通用对话 (General)**，还拥有全新的 **创作画布 (Canvas)** 模式和 **持仓管理 (Portfolio)** 功能，旨在帮助投研人员全方位提升工作效率。
 
 ---
 
@@ -44,7 +44,7 @@ GOOGLE_API_KEY=AIzaSy...
 # DeepSeek API Key (可选)
 DEEPSEEK_API_KEY=sk-xxxx...
 
-# Financial Datasets API Key (可选，用于 Chat 模式下自动抓取股票财报数据)
+# Financial Datasets API Key (可选，用于 General 模式下自动抓取股票财报数据)
 FINANCIAL_DATASETS_API_KEY=your-key...
 
 # Tavily API Key (可选，用于联网搜索)
@@ -71,7 +71,7 @@ pnpm dev
 
 ## 🌟 核心模式与功能
 
-### 1. Chat 模式 (智能投研助理)
+### 1. General 模式 (智能投研助理)
 - **任务拆解**：自动将模糊的问题拆分为"搜数、对比、分析"等子任务。
 - **实时数据**：结合 Financial Datasets，实时获取最新估值、利润表、资产负债表。
 - **联网搜索**：集成 Tavily API，支持获取最新的市场新闻和动态。
@@ -89,18 +89,23 @@ pnpm dev
 
 ## 📝 更新日志 (Update Log)
 
-### pu (User)
+### pu
 - **Canvas 投研画布**：实现三栏式可拖拽布局，支持项目制管理。
 - **Skill 技能管理**：支持用户自定义技能 Prompt 模板，并实现自动初始化。
 - **编辑器优化**：支持数万字长文本的流畅粘贴与实时字数统计。
 - **UI 架构重构**：统一 Global Header，实现侧边栏跟随模式动态切换。
 
-### duan (Friend)
+
+### duan
 - **Portfolio 持仓管理**：新增投资组合管理界面，支持股票跟踪。
 - **投资研报 SOP**：引入标准研报撰写流程，覆盖市场、公司、财务等多维度分析。
 - **Web Search 集成**：通过 Tavily API 为 AI 赋予实时联网搜索能力。
 - **文件解析增强**：支持上传 PDF 和 Word (.docx) 文档，自动提取文本至编辑器。
 
+### pu 1.18
+- **模式命名优化**：将 "Chat" tab 更名为 "General"，避免与 "Chat with AI" 功能混淆。
+- **独立路由系统**：每个 tab（General、Canvas、Portfolio）拥有独立的路由前缀，发送消息后 URL 会保持在对应路由下，不会互相跳转。从根本上解决数据隔离问题。
+- 
 ---
 
 ## 🐛 待修复问题 (Bug List)
@@ -117,9 +122,8 @@ pnpm dev
    - [ ] 添加股票价格实时监控
 
 3. **数据库隔离**
-   - [ ] Canvas 数据不显示在 Chat 数据库中
-   - [ ] 实现 Canvas 和 Chat 的完全数据隔离
-   - [ ] 优化数据查询性能
+   - [x] Canvas 数据不显示在 General 数据库中
+   - [x] 实现 Canvas 和 General 的完全数据隔离
 
 ### 中优先级
 - [ ] 优化 Canvas 界面的文件上传体验

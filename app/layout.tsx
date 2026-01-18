@@ -10,7 +10,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://chat.vercel.ai'),
-  title: 'FinGPT | Chat',
+  title: 'FinGPT | General',
   description: 'AI Research Agent for FinGPT',
 };
 

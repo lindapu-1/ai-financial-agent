@@ -35,13 +35,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         <SidebarMenu>
           <div className="flex flex-row justify-between items-center px-2 py-2">
             <span className="font-bold text-sm text-sidebar-foreground truncate">
-              {mode === 'chat'
+              {mode === 'general'
                 ? 'Chat History'
                 : mode === 'canvas'
                   ? 'Project Workspace'
                   : 'Portfolio Company'}
             </span>
-            {mode === 'chat' && (
+            {mode === 'general' && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -51,7 +51,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     onClick={() => {
                       setOpenMobile(false);
                       setQueryLoading(false, []);
-                      router.push('/');
+                      router.push('/general');
                       router.refresh();
                     }}
                   >
@@ -65,7 +65,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent className="group-data-[collapsible=icon]:hidden">
-        {mode === 'chat' ? (
+        {mode === 'general' ? (
           <SidebarHistory user={user} />
         ) : mode === 'canvas' ? (
           <ProjectList />
