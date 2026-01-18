@@ -9,10 +9,13 @@
 如果你是第一次使用这个项目，请按照以下四个步骤操作：
 
 ### 1. 安装基础环境 (仅需一次)
-你的电脑需要安装以下三个软件：
+你的电脑需要安装以下软件：
 - **Node.js**: [点击下载 (推荐 20.x 版本)](https://nodejs.org/)
-- **Docker Desktop**: [点击下载](https://www.docker.com/products/docker-desktop/)（**必须启动**，用于运行本地数据库）
 - **Git**: [点击下载](https://git-scm.com/downloads)
+- **数据库（三选一）**：
+  - **选项 A（推荐）**：Docker Desktop [点击下载](https://www.docker.com/products/docker-desktop/) - 最简单，一键启动数据库
+  - **选项 B**：本地安装 PostgreSQL [点击下载](https://www.postgresql.org/download/) - 如果已有 PostgreSQL，可直接使用
+  - **选项 C**：使用远程 PostgreSQL 数据库 - 如果有云数据库服务，直接配置连接字符串即可
 
 ### 2. 下载并安装项目
 打开你的终端（Windows 搜索 `PowerShell`；Mac 搜索 `终端`），依次运行：
@@ -51,22 +54,63 @@ FINANCIAL_DATASETS_API_KEY=your-key...
 TAVILY_API_KEY=tvly-xxxx...
 
 # PostgreSQL 数据库连接字符串（必须配置！）
-# 如果使用下面的 Docker 命令启动数据库，直接使用这个配置即可：
+# 格式：postgresql://用户名:密码@主机:端口/数据库名
+# 
+# 选项 A：使用 Docker（推荐，最简单）
 POSTGRES_URL=postgresql://postgres:postgres@localhost:5433/hony_agent
+#
+# 选项 B：使用本地 PostgreSQL（如果已安装）
+# POSTGRES_URL=postgresql://postgres:你的密码@localhost:5432/hony_agent
+#
+# 选项 C：使用远程 PostgreSQL（如果有云数据库）
+# POSTGRES_URL=postgresql://用户名:密码@远程地址:5432/数据库名
 ```
 
 **重要提示**：
 - `POSTGRES_URL` 是**必须配置**的，否则数据库无法连接
-- 如果你修改了 Docker 命令中的数据库配置（用户名、密码、端口等），需要相应修改 `POSTGRES_URL`
+- 根据你选择的数据库选项，修改对应的连接字符串
 
-### 4. 启动项目 (一键运行)
-确保你的 **Docker Desktop** 已经打开并正在运行（看到鲸鱼图标变绿），然后执行：
+### 4. 启动项目
+
+#### 选项 A：使用 Docker（推荐，最简单）
 
 ```bash
-# 1. 启动本地数据库 (此命令只会创建空数据库，不会包含作者的私人对话)
+# 1. 确保 Docker Desktop 已启动（看到绿色图标）
+# 2. 启动本地数据库（此命令只会创建空数据库，不会包含作者的私人对话）
 docker run -d --name hony-agent-db -p 5433:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=hony_agent postgres:16
 
-# 2. 初始化数据库结构 (它会自动为您创建所需的表格)
+# 3. 等待几秒让数据库完全启动，然后初始化数据库结构
+pnpm db:migrate
+
+# 4. 启动应用
+pnpm dev
+```
+
+#### 选项 B：使用本地 PostgreSQL
+
+```bash
+# 1. 确保 PostgreSQL 已安装并运行
+# 2. 创建数据库（如果还没有）
+createdb hony_agent
+# 或者在 PostgreSQL 命令行中：CREATE DATABASE hony_agent;
+
+# 3. 确保 .env.local 中的 POSTGRES_URL 指向本地 PostgreSQL
+# 例如：POSTGRES_URL=postgresql://postgres:你的密码@localhost:5432/hony_agent
+
+# 4. 初始化数据库结构
+pnpm db:migrate
+
+# 5. 启动应用
+pnpm dev
+```
+
+#### 选项 C：使用远程 PostgreSQL
+
+```bash
+# 1. 确保 .env.local 中的 POSTGRES_URL 指向远程数据库
+# 例如：POSTGRES_URL=postgresql://用户名:密码@远程地址:5432/数据库名
+
+# 2. 初始化数据库结构
 pnpm db:migrate
 
 # 3. 启动应用
@@ -164,8 +208,14 @@ pnpm dev
 
 ## ❓ 常见问题排查 (FAQ)
 
-- **Q: 数据库启动失败，提示 "Name conflict"?**
-  - **A**: 说明你之前运行过旧容器。请运行 `docker rm -f hony-agent-db` 然后再执行步骤 4 的第一条指令。
+- **Q: 必须使用 Docker 吗？**
+  - **A**: 不一定。你可以选择：
+    1. **Docker（推荐）**：最简单，一键启动，适合小白用户
+    2. **本地 PostgreSQL**：如果已安装 PostgreSQL，直接配置连接字符串即可
+    3. **远程 PostgreSQL**：如果有云数据库，直接使用远程连接字符串
+
+- **Q: Docker 启动失败，提示 "Name conflict"?**
+  - **A**: 说明你之前运行过旧容器。请运行 `docker rm -f hony-agent-db` 然后再执行步骤 4 的 Docker 启动命令。
 
 - **Q: 运行 `pnpm db:migrate` 时提示 "POSTGRES_URL is not defined"?**
   - **A**: 确保你已经创建了 `.env.local` 文件，并且配置了 `POSTGRES_URL=postgresql://postgres:postgres@localhost:5433/hony_agent`。如果使用 VS Code，可能需要重启终端或编辑器。
